@@ -40,6 +40,7 @@ import Data.Text (Text, intercalate, unpack, pack, concat)
 import qualified Data.Text.IO as T
 import Data.Function
 import System.Process
+import System.IO.Unsafe
 
 debug = False
 
@@ -56,13 +57,59 @@ type IVar = Text
 data T
   = E E
   | Put E [E] E | Accum E E | Store E E
-  | Label Label | If E T T | If1 E T | Jump Label | (:>) T T | Skip
+  | Label Label
+  | If E T T | If1 E T | (:>) T T | Block T
+  | Jump Label
   | Comment Text
   | Debug Text
-  | Block T
   | Labels [Text]
-  deriving Show
+  | Skip
+  deriving (Show, Eq)
 unreachable s = Comment $ "unreachable: " <> s
+
+traverseT'' :: (T -> Maybe T) -> T -> Maybe T
+traverseT'' f term =
+  let fm = fromMaybe in
+  let re = traverseT'' f in
+  let ap t = fm t (f t)
+  -- let ap t' =
+  --       let t'' = case f t' of Just t'' -> t''; Nothing -> t' in
+  --         if t'' /= t then re t'' else t
+  in -- unsafePrint (term) $
+  case term of
+    If c t e -> case (re t, re e) of
+      (Nothing, Nothing) -> f term
+      (t', e') -> re $ ap $ If c (fm t t') (fm e e')
+    a :> b -> case (re a, re b) of
+      (Nothing, Nothing) -> f term >>= re
+      (a', b') -> let term' = fm a a' :> fm b b' in re term'
+    Block t -> case re t of
+      Nothing -> f $ term
+      Just t -> re $ ap $ Block $ t
+    _ -> f term
+
+traverseT' :: (T -> Maybe T) -> T -> Maybe T
+traverseT' f term =
+  let fm = fromMaybe in
+  let re = traverseT' f in
+  case f term of
+    Just term' -> Just $ term'
+    Nothing -> case term of
+      If c t e -> case (re t, re e) of
+        (Nothing, Nothing) -> Nothing
+        (t', e') -> Just $ If c (fm t t') (fm e e')
+      a :> b -> case (re a, re b) of
+        (Nothing, Nothing) -> Nothing
+        (a', b') -> Just $ fm a a' :> fm b b'
+      Block t -> case re t of
+        Nothing -> Nothing
+        Just t -> Just $ Block $ t
+      _ -> Nothing
+
+traverseT f t =
+  case traverseT' f t of
+    Nothing -> t
+    Just t' -> traverseT f t'
 
 data E
   = Lit Integer | IVar IVar | Ident Text
@@ -87,6 +134,7 @@ instance Num E where
   negate = sorry
 
 le    a b   = BinOp "<" a b
+--min   a b k = Store "foo" (Call "min" [a, b]) :> k "foo"
 min   a b k = If (le b a) (k b) (k a)
 max   a b k = If (le b a) (k a) (k b)
 eq    a b   = BinOp "==" a b
@@ -419,10 +467,27 @@ evalTrivial e@(a :> b) = do
         Just b -> Just $ a :> b
 evalTrivial e          = return $ Just e
 
+unsafePrint s e = unsafePerformIO $ print s >> return e
+normalizeSeq :: T -> T
+normalizeSeq = traverseT go
+  where
+    go ((a :> b) :> c) = Just (a :> (b :> c))
+    go _ = Nothing
+
+-- NOT SOUND; maybe sound in practice
+normalizeIfSeq :: T -> T
+normalizeIfSeq = traverseT go
+  where
+    go ((If c1 t1 e1) :> (If c2 t2 e2)) | c1 == c2 = Just $ If c1 (t1 :> t2) (e1 :> e2)
+    go ((If c1 t1 e1) :> ((If c2 t2 e2) :> b)) | c1 == c2 = Just $ (If c1 (t1 :> t2) (e1 :> e2)) :> b
+    go _ = Nothing
+
 t2c :: T -> M ()
 t2c t = do
     triv <- evalTrivial t
-    case triv of
+    let triv' = normalizeSeq <$> triv
+    --let triv' = triv
+    case triv' of
       Nothing -> ""
       Just t -> case t of
         Put l [i] r         -> do { emit "put"; (wrapm $ emit $ intercalate "," (map e2c [l, i, r])); ";" }
@@ -488,6 +553,21 @@ fresh n t = do
   put (k+1, (name, t) : m)
   return $ name
 
+loopMin :: M (GenIV () T -> T)
+loopMin = do
+  let loop = "loop"
+  let done = "done"
+  return $ \g ->
+    Block $
+      Labels [loop, done] :>
+      reset g :>
+      Label loop :>
+      (value g $ fromMaybe Skip) :>
+      (next g $ \ms -> case ms of
+          Nothing -> Jump done
+          Just s -> s :> Jump loop) :>
+      Label done :> Debug ";"
+
 loopT :: M (GenIV () T -> T)
 loopT = do
   let loop = "loop"
@@ -537,8 +617,11 @@ disablePrinting = False
 
 compile :: M T -> IO ()
 compile t = do
-  let outName = "out.cpp"
-  T.writeFile outName . addHeader . runM $ t >>= t2c
+  let outName = "out3.cpp"
+  T.writeFile outName . addHeader . runM $ do
+    p <- t
+    --unsafePerformIO (print p >> return (t2c p))
+    t2c p
   callCommand $ "clang-format -i " <> outName
   where
     addHeader (st, s) =
@@ -610,8 +693,7 @@ externStorageGen x =
   LGen
   {
     -- no bounds check done; assume that it can always give a storage location
-    gen = g { value = \k -> (k (Just $ Deref $ call "value_ref"))
-  }
+    gen = g { value = \k -> (k (Just $ Deref $ call "value_ref")) }
   , locate = \i -> case i of
       Nothing -> E $ call "finish"
       Just i -> E $ Call (RecordAccess x "skip") [i]
@@ -634,8 +716,8 @@ instance (Storable l r out) =>
            (GenIV () out) where
   store l r = Gen
     { next = \k -> next r $ fmap (\step -> step :> (value r $ \mv -> case mv of
-                                         Nothing -> Comment "don't update storage"
-                                         Just _ -> (current r $ locate l))) .> k
+        Nothing -> Comment "don't update storage"
+        Just _ -> (current r $ locate l))) .> k
     , current = ($ Just ())
     , value = \k -> value (gen l) $ \mloc -> case mloc of
         Nothing -> error "unreachable"
@@ -656,7 +738,7 @@ contraction1 = do
   loop <- loopT
   return $ \v ->
     (prefixGen
-      (Store acc 0 :> loop (store (acc) (fl v)))
+      (Store acc 0 :> loop (store acc (fl v)))
       ((singleton $ acc) { initialize = initialize v, reset = reset v }))
 
 f <**> a = f <*> (pure a)
@@ -673,10 +755,11 @@ run mgen = compile $ do
   gen <- mgen
   l <- loopT
   return $ initialize gen :> (l gen)
+  --return $ (l gen)
 
 -- Short operators for constructing expressions
-type VectorGen = GenIV' (Maybe E) (GenIV () E)
-type MatrixGen = GenIV' (Maybe E) (GenIV' (Maybe E) (GenIV () E))
+type VectorGen = GenIV E (GenIV () E)
+type MatrixGen = GenIV E (GenIV E (GenIV () E))
 m :: String -> M MatrixGen
 m v = do
   let file = "cavity11/cavity11.mtx"
@@ -719,15 +802,16 @@ sum3 x = do
 repl1 x = replicateGen 3000  <$> int <*> x
 repl2 x = do
   i <- int
-  fmap (replicateGen 5 i) <$> x
+  fmap (replicateGen 3000 i) <$> x
 
-egMdotM  = run $ down2 <$> (mvar <-- m "A" <.> m "B")
+egMM  = run $ down2 <$> (mvar <-- m "A" <.> m "B")
 egMMM  = run $ down2 <$> (mvar <-- m "A" <.> m "B" <.> m "C")
 egMdotMSum = run $ float <-- sum1 (sum2 (m "A" <.> m "B"))
 -- dot, matrix-vector product, matrix-matrix product
-egVV = run $ float <-- sum1 (v "u" <.> v "v")
+egVdotV = run $ float <-- sum1 (v "u" <.> v "v")
 egMV = run $ down <$> (vvar <-- sum2 (m "A" <.> repl1 (v "x")))
 egMV' = run $ down2 <$> (mvar <-- (m "A" <.> repl1 (v "x")))
-egMM = run $ down2 <$> (mvar <-- sum3 (repl2 (m "A") <.> repl1 (m "B")))
+egMMmul = run $ down2 <$> (mvar <-- sum3 (repl2 (m "A") <.> repl1 (m "B")))
+egVV = run $ down <$> (vvar <-- (v "u" <.> v "v"))
 egVVV = run $ down <$> (vvar <-- (v "u" <.> v "v" <.> v "w"))
 egMSum = run $ (float <-- sum1 (sum2 (m "A")))

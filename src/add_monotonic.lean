@@ -32,8 +32,14 @@ end
 end params_unary
 
 section params_binary
-variables {σ₁ σ₂ I V : Type} [linear_order I] [add_monoid V]
-{a : iter σ₁ I V} {b : iter σ₂ I V}
+--variables {σ₁ σ₂ I V V₁ V₂ V₃: Type} [linear_order I] [add_monoid V]
+--{a : iter σ₁ I V₁} {b : iter σ₂ I V₂}
+--(add : V₁ → V₂ → V₃)
+
+declare two_iterators
+declare addV
+
+local infix `+'`:50 := add_iter add
 
 lemma add_ι_min {s} : (a+'b).ι s = min (a.ι s.1) (b.ι s.2) := begin
 cases s with s₁ s₂,
