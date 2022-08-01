@@ -11,30 +11,57 @@ noncomputable theory
 inductive loc
 inductive value
 inductive Prog
-instance : decidable_eq loc := sorry
+
+open_locale classical
+
+--set_option trace.class_instances true
 
 instance {α} : has_zero (option α) := ⟨none⟩
 @[reducible] def heap := loc →₀ option value
 def hprop := heap → Prop
 
-instance option.add_zero_class : add_zero_class (option value) := ⟨none, (<|>), option.none_orelse, option.orelse_none⟩
-instance : add_monoid (option value) := {
-  option.add_zero_class with
+instance option.add_zero_class {α} : add_zero_class (option α) :=
+⟨none, (<|>), option.none_orelse, option.orelse_none⟩
+
+instance {α} : add_monoid (option α) :=
+{ option.add_zero_class with
   add_assoc := by { intros, cases a; cases b; cases c; simp [add_zero_class.add] } }
-example : has_add heap := infer_instance
+example : add_zero_class heap := infer_instance
 example : add_monoid heap := infer_instance
 
+@[simp] lemma ne_zero_add_ne_zero {α} : ∀ (x y : option α), x ≠ 0 → x + y ≠ 0 :=  begin
+intros _ _ h,
+cases x; cases y; simp [(+), add_zero_class.add, has_zero.zero, add_zero_class.zero] at *,
+exact h,
+end
 
-def eval : Prog → heap → heap .
+@[simp] lemma add_ne_zero_ne_zero {α} : ∀ (x y : option α), y ≠ 0 → x + y ≠ 0 :=  begin
+intros _ _ h,
+cases x; cases y; simp [(+), add_zero_class.add, has_zero.zero, add_zero_class.zero] at *,
+exact h,
+end
 
 namespace heap
 variables (P Q H₁ H₂ H₃ : hprop) {h₁ h₂ h₃ : heap}
 
-#check finsupp.zip_with
+lemma orelse_neq_zero : ∀ x ∈ h₁.support ∪ h₂.support, h₁ x + h₂ x ≠ 0 := begin
+intros x h, simp only [finset.mem_union] at h,
+cases h,
+have := (h₁.mem_support_to_fun x).mp h,
+apply ne_zero_add_ne_zero, exact this,
+have := (h₂.mem_support_to_fun x).mp h,
+apply add_ne_zero_ne_zero, exact this,
+end
+
 theorem support_eq (h₁ h₂ : heap) : (h₁ + h₂).support = h₁.support ∪ h₂.support := begin
-simp [has_add.add, finsupp.zip_with, finsupp.support_on_finset],
--- rw finset.filter_true,
-sorry
+-- /-try this:-/ haveI := @ne.decidable (option value) (λ a b, classical.prop_decidable (a = b)),
+simp only [has_add.add],
+simp only [finsupp.zip_with, finsupp.support_on_finset],
+have := λ a, @orelse_neq_zero h₁ h₂ a,
+simp only [(+)] at this,
+have := (finset.filter_eq_self (h₁.support ∪ h₂.support)).mpr this,
+exact this, -- invalid type ascription, different decidable instances
+sorry,
 end
 
 def disjoint' (h₁ h₂ : heap) : Prop := ∀ loc, h₁ loc = none ∨ h₂ loc = none
@@ -43,13 +70,16 @@ lemma disjoint_equiv : disjoint h₁ h₂ ↔ disjoint' h₁ h₂ :=
 { mp  := begin intros h l, simp [disjoint] at *, sorry end,
   mpr := sorry
 }
-def merge : heap → heap → heap := has_add.add -- finsupp.zip_with option.orelse rfl
 
+--def merge : heap → heap → heap := (+)
+--@[simp] lemma merge_is_add : merge h₁ h₂ = h₁ + h₂ := rfl
 
 def star : hprop := λ h, ∃ (h₁ h₂ : heap),
-H₁ h₁ ∧ H₂ h₂ ∧ disjoint h₁ h₂ ∧ h = merge h₁ h₂
+H₁ h₁ ∧ H₂ h₂ ∧ disjoint h₁ h₂ ∧ h = h₁ + h₂
 
 infixr ` ⋆ `:71 := star
+
+def eval : Prog → heap → heap .
 
 def hoare (p : Prog) (P Q : hprop) : Prop :=
 ∀ s, P s → ∃ s', eval p s = s' ∧ Q s'
@@ -63,11 +93,9 @@ lemma disjoint.symm {h₁ h₂} : disjoint h₁ h₂ → disjoint h₂ h₁ := b
 intros h, simpa [heap.disjoint, disjoint.comm]
 end
 
---λ h l, (h l).swap
+@[simp] lemma merge_eq {h₁ h₂ : heap} {x} : (h₁ + h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
 
-@[simp] lemma merge_eq {h₁ h₂ x} : (merge h₁ h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
-
-lemma disjoint.merge_eq {h₁ h₂} : disjoint h₁ h₂ → merge h₁ h₂ = merge h₂ h₁ := begin
+lemma disjoint.add_comm {h₁ h₂} : disjoint h₁ h₂ → h₁ + h₂ = h₂ + h₁ := begin
 intros dis,
 have dis' := disjoint_equiv.mp dis,
 ext l,
@@ -78,7 +106,7 @@ lemma star_symm' : ∀ x, (H₁ ⋆ H₂) x → (H₂ ⋆ H₁) x := begin
 simp only [star],
 rintros x ⟨h₁, h₂, p1, p2, dis, split⟩,
 refine ⟨h₂, h₁, p2, p1, dis.symm, _⟩,
-{ rw dis.merge_eq at split, assumption }
+{ rw dis.add_comm at split, assumption }
 end
 
 theorem star_symm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
@@ -87,22 +115,22 @@ intro h,
 split ; exact star_symm' _ _ _,
 end
 
-lemma disjoint.merge {h₁ h₂ h₃ : heap} : (h₁.merge h₂).disjoint h₃ → h₂.disjoint h₃ := begin
+lemma disjoint.merge {h₁ h₂ h₃ : heap} : (h₁ + h₂).disjoint h₃ → h₂.disjoint h₃ := begin
 have := support_eq h₁ h₂,
-simp [disjoint, merge, this],
+simp [disjoint, this],
 end
 
 theorem star_assoc' : ∀ x, ((H₁ ⋆ H₂) ⋆ H₃) x → (H₁ ⋆ (H₂ ⋆ H₃)) x := begin
 simp only [star],
 rintros x ⟨h₁', h₃, ⟨h₁,h₂,p1,p2,dis12,split1'⟩, p3, dis3, splitx⟩,
 rw split1' at dis3,
-refine ⟨h₁, (h₂.merge h₃), p1, ⟨h₂, h₃, p2, p3, disjoint.merge dis3, rfl⟩, _, _⟩,
-{ simp [disjoint, merge] at dis3,
+refine ⟨h₁, (h₂ + h₃), p1, ⟨h₂, h₃, p2, p3, disjoint.merge dis3, rfl⟩, _, _⟩,
+{ simp [disjoint] at dis3,
   simp [finsupp.support_add_eq dis12] at dis3,
-  simp [disjoint, merge],
+  simp [disjoint],
   simp [finsupp.support_add_eq dis3.2],
   exact ⟨dis12, dis3.1⟩ },
-{ simp [split1', splitx, merge, add_assoc], }
+{ simp [split1', splitx, add_assoc] }
 end
 theorem star_assoc : (H₁ ⋆ H₂) ⋆ H₃ = H₁ ⋆ (H₂ ⋆ H₃) := begin
 apply hprop_ext, intro x, refine ⟨star_assoc' _ _ _ x, _⟩,
@@ -117,6 +145,5 @@ simp only [triple, star_assoc] at *,
 intro H',
 exact h _,
 end
-
 
 end heap
