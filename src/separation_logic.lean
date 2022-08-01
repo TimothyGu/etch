@@ -66,7 +66,10 @@ end
 
 def disjoint' (h₁ h₂ : heap) : Prop := ∀ loc, h₁ loc = none ∨ h₂ loc = none
 def disjoint  (h₁ h₂ : heap) : Prop := disjoint h₁.support h₂.support
-lemma disjoint_equiv : disjoint h₁ h₂ ↔ disjoint' h₁ h₂ :=
+
+infix  ` # `:80  := disjoint
+
+lemma disjoint_equiv : h₁ # h₂ ↔ disjoint' h₁ h₂ :=
 { mp  := begin intros h l, simp [disjoint] at *, sorry end,
   mpr := sorry
 }
@@ -89,13 +92,11 @@ def triple (t : Prog) (P Q : hprop) : Prop :=
 
 def hprop_ext : (∀ x, H₁ x ↔ H₂ x) → H₁ = H₂ := begin intro h, ext, exact h x end
 
-lemma disjoint.symm {h₁ h₂} : disjoint h₁ h₂ → disjoint h₂ h₁ := begin
-intros h, simpa [heap.disjoint, disjoint.comm]
-end
+lemma disjoint.comm {h₁ h₂} : h₁ # h₂ = h₂ # h₁ := by simp [heap.disjoint, disjoint.comm]
 
 @[simp] lemma merge_eq {h₁ h₂ : heap} {x} : (h₁ + h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
 
-lemma disjoint.add_comm {h₁ h₂} : disjoint h₁ h₂ → h₁ + h₂ = h₂ + h₁ := begin
+lemma disjoint.add_comm {h₁ h₂} : h₁ # h₂ → h₁ + h₂ = h₂ + h₁ := begin
 intros dis,
 have dis' := disjoint_equiv.mp dis,
 ext l,
@@ -115,23 +116,20 @@ intro h,
 split ; exact star_symm' _ _ _,
 end
 
-lemma disjoint.merge {h₁ h₂ h₃ : heap} : (h₁ + h₂).disjoint h₃ → h₂.disjoint h₃ := begin
-have := support_eq h₁ h₂,
-simp [disjoint, this],
-end
+#print notation
+lemma disjoint.sum_l  {h₁ h₂ h₃ : heap} : (h₁ + h₂) # h₃ ↔ h₁ # h₃ ∧ h₂ # h₃ := by simp [disjoint, support_eq]
+lemma disjoint.sum_r {h₁ h₂ h₃ : heap} : h₁ # (h₂ + h₃) ↔ h₁ # h₂ ∧ h₁ # h₃ := by simp [disjoint, support_eq]
 
 theorem star_assoc' : ∀ x, ((H₁ ⋆ H₂) ⋆ H₃) x → (H₁ ⋆ (H₂ ⋆ H₃)) x := begin
 simp only [star],
 rintros x ⟨h₁', h₃, ⟨h₁,h₂,p1,p2,dis12,split1'⟩, p3, dis3, splitx⟩,
 rw split1' at dis3,
-refine ⟨h₁, (h₂ + h₃), p1, ⟨h₂, h₃, p2, p3, disjoint.merge dis3, rfl⟩, _, _⟩,
-{ simp [disjoint] at dis3,
-  simp [finsupp.support_add_eq dis12] at dis3,
-  simp [disjoint],
-  simp [finsupp.support_add_eq dis3.2],
-  exact ⟨dis12, dis3.1⟩ },
+obtain ⟨dis13, dis23⟩ := (disjoint.sum_l.mp dis3),
+refine ⟨h₁, (h₂ + h₃), p1, ⟨h₂, h₃, p2, p3, dis23, rfl⟩, _, _⟩,
+{ simp [disjoint.sum_r, *] },
 { simp [split1', splitx, add_assoc] }
 end
+
 theorem star_assoc : (H₁ ⋆ H₂) ⋆ H₃ = H₁ ⋆ (H₂ ⋆ H₃) := begin
 apply hprop_ext, intro x, refine ⟨star_assoc' _ _ _ x, _⟩,
 { intro h, rw star_symm at h, rw star_symm H₂ H₃ at h,

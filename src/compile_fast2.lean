@@ -1,4 +1,4 @@
-import verify
+import verification.verify
 
 variables {α ι γ β : Type}
 variables (R : Type) [add_zero_class R] [has_one R] [has_mul R]
@@ -53,7 +53,7 @@ def Expr.succ : Expr R → Expr R := λ e, e ⟪+⟫ index.one
 def min : Expr R → Expr R → Expr R := λ a b, Expr.call Op.min ![a, b]
 def max : Expr R → Expr R → Expr R := λ a b, Expr.call Op.max ![a, b]
 
-def mul [has_hmul α β γ] (a : BoundedStreamGen R (Expr R) α) (b : BoundedStreamGen R (Expr R) β) : BoundedStreamGen R (Expr R) γ :=
+def BoundedStreamGen.mul [has_hmul α β γ] (a : BoundedStreamGen R (Expr R) α) (b : BoundedStreamGen R (Expr R) β) : BoundedStreamGen R (Expr R) γ :=
 { current := max a.current b.current,
   value := a.value ⋆ b.value,
   ready := a.ready ⟪&&⟫ b.ready ⟪&&⟫ a.current ⟪=⟫ b.current,
@@ -69,7 +69,7 @@ def mul [has_hmul α β γ] (a : BoundedStreamGen R (Expr R) α) (b : BoundedStr
 instance [has_hmul α β γ] : has_hmul
   (BoundedStreamGen R (Expr R) α)
   (BoundedStreamGen R (Expr R) β)
-  (BoundedStreamGen R (Expr R) γ) := ⟨mul⟩
+  (BoundedStreamGen R (Expr R) γ) := ⟨BoundedStreamGen.mul⟩
 
 variables (R)
 structure AccessExpr := (base : Ident) (index : Expr R)
