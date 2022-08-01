@@ -103,20 +103,19 @@ ext l,
 cases dis' l; simp [h],
 end
 
-lemma star_symm' : ∀ x, (H₁ ⋆ H₂) x → (H₂ ⋆ H₁) x := begin
+lemma star.symm : ∀ x, (H₁ ⋆ H₂) x → (H₂ ⋆ H₁) x := begin
 simp only [star],
-rintros x ⟨h₁, h₂, p1, p2, dis, split⟩,
+rintro x ⟨h₁, h₂, p1, p2, dis, split⟩,
 refine ⟨h₂, h₁, p2, p1, dis.symm, _⟩,
 { rw dis.add_comm at split, assumption }
 end
 
-theorem star_symm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
+theorem star.comm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
 apply hprop_ext,
 intro h,
-split ; exact star_symm' _ _ _,
+split ; exact star.symm _ _ _,
 end
 
-#print notation
 lemma disjoint.sum_l  {h₁ h₂ h₃ : heap} : (h₁ + h₂) # h₃ ↔ h₁ # h₃ ∧ h₂ # h₃ := by simp [disjoint, support_eq]
 lemma disjoint.sum_r {h₁ h₂ h₃ : heap} : h₁ # (h₂ + h₃) ↔ h₁ # h₂ ∧ h₁ # h₃ := by simp [disjoint, support_eq]
 
@@ -132,9 +131,9 @@ end
 
 theorem star_assoc : (H₁ ⋆ H₂) ⋆ H₃ = H₁ ⋆ (H₂ ⋆ H₃) := begin
 apply hprop_ext, intro x, refine ⟨star_assoc' _ _ _ x, _⟩,
-{ intro h, rw star_symm at h, rw star_symm H₂ H₃ at h,
+{ intro h, rw star.comm at h, rw star.comm H₂ H₃ at h,
   have := star_assoc' _ _ _ x h,
-  rw star_symm, rw star_symm H₁ H₂, assumption }
+  rw star.comm, rw star.comm H₁ H₂, assumption }
 end
 
 def frame : ∀ (t : Prog) H, triple t P Q → triple t (P ⋆ H) (Q ⋆ H) := begin
