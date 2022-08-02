@@ -29,47 +29,36 @@ instance {α} : add_monoid (option α) :=
 example : add_zero_class heap := infer_instance
 example : add_monoid heap := infer_instance
 
-@[simp] lemma ne_zero_add_ne_zero {α} : ∀ (x y : option α), x ≠ 0 → x + y ≠ 0 :=  begin
-intros _ _ h,
-cases x; cases y; simp [(+), add_zero_class.add, has_zero.zero, add_zero_class.zero] at *,
-exact h,
-end
-
-@[simp] lemma add_ne_zero_ne_zero {α} : ∀ (x y : option α), y ≠ 0 → x + y ≠ 0 :=  begin
-intros _ _ h,
-cases x; cases y; simp [(+), add_zero_class.add, has_zero.zero, add_zero_class.zero] at *,
-exact h,
-end
+lemma merge_def {h₁ h₂ : heap} {x} : (h₁ + h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
 
 namespace heap
 variables (P Q H₁ H₂ H₃ : hprop) {h₁ h₂ h₃ : heap}
 
-lemma orelse_neq_zero (h₁ h₂ : heap) : ∀ x ∈ h₁.support ∪ h₂.support, h₁ x + h₂ x ≠ 0 := begin
-intros x h, simp only [finset.mem_union] at h,
-cases h,
-have := (h₁.mem_support_to_fun x).mp h,
-apply ne_zero_add_ne_zero, exact this,
-have := (h₂.mem_support_to_fun x).mp h,
-apply add_ne_zero_ne_zero, exact this,
-end
+@[simp] lemma option.none_eq_zero {α} : (none : option α) = 0 := rfl
+@[simp] lemma option.not_some_eq_zero {α} (x : α) : some x ≠ 0 := λ h, by injection h
+@[simp] lemma option.some_add_some {α} (x y : α) : some x + some y = some x := rfl
+@[simp] lemma option.none_add {α} (x : option α) : none + x = x := by cases x; simp [option.none_eq_zero]
 
-theorem support_eq (h₁ h₂ : heap) : (h₁ + h₂).support = h₁.support ∪ h₂.support := begin
-simp only [has_add.add, finsupp.zip_with, finsupp.support_on_finset],
-convert (finset.filter_eq_self _).mpr (orelse_neq_zero h₁ h₂),
-end
+lemma option.add_eq_zero_iff {α} (x y : option α) : x + y = 0 ↔ x = 0 ∧ y = 0 :=
+by cases x; cases y; simp
+
+lemma orelse_neq_zero (h₁ h₂ : heap) (x) : x ∈ h₁.support ∪ h₂.support ↔ h₁ x + h₂ x ≠ 0 :=
+by simp only [option.add_eq_zero_iff, or_iff_not_imp_left, finset.mem_union, finsupp.mem_support_iff, ne.def, not_not, not_and]
+
+theorem support_eq (h₁ h₂ : heap) : (h₁ + h₂).support = h₁.support ∪ h₂.support :=
+by simp [has_add.add, finsupp.zip_with, finsupp.support_on_finset, finset.filter_eq_self, orelse_neq_zero]
 
 def disjoint' (h₁ h₂ : heap) : Prop := ∀ loc, h₁ loc = none ∨ h₂ loc = none
 def disjoint  (h₁ h₂ : heap) : Prop := disjoint h₁.support h₂.support
 
 infix  ` # `:80  := disjoint
 
+#check set.inter_Inter
+#check finset.disj_union_eq_union
 lemma disjoint_equiv : h₁ # h₂ ↔ disjoint' h₁ h₂ :=
-{ mp  := begin intros h l, simp [disjoint] at *, sorry end,
+{ mp  := begin intros h l, simp [disjoint, _root_.disjoint] at *, sorry end,
   mpr := sorry
 }
-
---def merge : heap → heap → heap := (+)
---@[simp] lemma merge_is_add : merge h₁ h₂ = h₁ + h₂ := rfl
 
 def star : hprop := λ h, ∃ (h₁ h₂ : heap),
 H₁ h₁ ∧ H₂ h₂ ∧ disjoint h₁ h₂ ∧ h = h₁ + h₂
@@ -79,7 +68,7 @@ infixr ` ⋆ `:71 := star
 def eval : Prog → heap → heap .
 
 def hoare (p : Prog) (P Q : hprop) : Prop :=
-∀ s, P s → ∃ s', eval p s = s' ∧ Q s'
+∀ s, P s → Q (eval p s)
 
 def triple (t : Prog) (P Q : hprop) : Prop :=
 ∀ H, hoare t (P ⋆ H) (Q ⋆ H)
@@ -88,7 +77,6 @@ def hprop_ext : (∀ x, H₁ x ↔ H₂ x) → H₁ = H₂ := begin intro h, ext
 
 lemma disjoint.comm {h₁ h₂} : h₁ # h₂ = h₂ # h₁ := by simp [heap.disjoint, disjoint.comm]
 
-@[simp] lemma merge_eq {h₁ h₂ : heap} {x} : (h₁ + h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
 
 lemma disjoint.add_comm {h₁ h₂} : h₁ # h₂ → h₁ + h₂ = h₂ + h₁ := begin
 intros dis,
