@@ -44,7 +44,7 @@ end
 namespace heap
 variables (P Q H₁ H₂ H₃ : hprop) {h₁ h₂ h₃ : heap}
 
-lemma orelse_neq_zero : ∀ x ∈ h₁.support ∪ h₂.support, h₁ x + h₂ x ≠ 0 := begin
+lemma orelse_neq_zero (h₁ h₂ : heap) : ∀ x ∈ h₁.support ∪ h₂.support, h₁ x + h₂ x ≠ 0 := begin
 intros x h, simp only [finset.mem_union] at h,
 cases h,
 have := (h₁.mem_support_to_fun x).mp h,
@@ -54,14 +54,8 @@ apply add_ne_zero_ne_zero, exact this,
 end
 
 theorem support_eq (h₁ h₂ : heap) : (h₁ + h₂).support = h₁.support ∪ h₂.support := begin
--- /-try this:-/ haveI := @ne.decidable (option value) (λ a b, classical.prop_decidable (a = b)),
-simp only [has_add.add],
-simp only [finsupp.zip_with, finsupp.support_on_finset],
-have := λ a, @orelse_neq_zero h₁ h₂ a,
-simp only [(+)] at this,
-have := (finset.filter_eq_self (h₁.support ∪ h₂.support)).mpr this,
-exact this, -- invalid type ascription, different decidable instances
-sorry,
+simp only [has_add.add, finsupp.zip_with, finsupp.support_on_finset],
+convert (finset.filter_eq_self _).mpr (orelse_neq_zero h₁ h₂),
 end
 
 def disjoint' (h₁ h₂ : heap) : Prop := ∀ loc, h₁ loc = none ∨ h₂ loc = none
