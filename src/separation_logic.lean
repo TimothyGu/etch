@@ -72,16 +72,14 @@ lemma disjoint.comm {h₁ h₂} : h₁ # h₂ = h₂ # h₁ := by simp [heap.dis
 
 lemma disjoint.add_comm {h₁ h₂} : h₁ # h₂ → h₁ + h₂ = h₂ + h₁ := begin
 intros dis,
-have dis' := disjoint_equiv.mp dis,
+rw disjoint_equiv at dis,
 ext l,
-cases dis' l; simp only [h, finsupp.coe_add, pi.add_apply, option.none_eq_zero, zero_add, add_zero]
+cases dis l; simp only [h, finsupp.coe_add, pi.add_apply, option.none_eq_zero, zero_add, add_zero],
 end
 
 lemma star.symm : ∀ x, (H₁ ⋆ H₂) x → (H₂ ⋆ H₁) x := begin
-simp only [star],
 rintro x ⟨h₁, h₂, p1, p2, dis, split⟩,
-refine ⟨h₂, h₁, p2, p1, dis.symm, _⟩,
-{ rw dis.add_comm at split, assumption }
+exact ⟨h₂, h₁, p2, p1, dis.symm, dis.add_comm ▸ split⟩,
 end
 
 theorem star.comm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
