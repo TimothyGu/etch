@@ -18,7 +18,6 @@ open_locale classical
 
 instance {α} : has_zero (option α) := ⟨none⟩
 @[reducible] def heap := loc →₀ option value
-def hprop := heap → Prop
 
 instance option.add_zero_class {α} : add_zero_class (option α) :=
 ⟨none, (<|>), option.none_orelse, option.orelse_none⟩
@@ -32,7 +31,7 @@ example : add_monoid heap := infer_instance
 lemma merge_def {h₁ h₂ : heap} {x} : (h₁ + h₂) x = option.orelse (h₁ x) (h₂ x) := rfl
 
 namespace heap
-variables (P Q H₁ H₂ H₃ : hprop) {h₁ h₂ h₃ : heap}
+variables (P Q H₁ H₂ H₃ : set heap) {h₁ h₂ h₃ : heap}
 
 @[simp] lemma option.none_eq_zero {α} : (none : option α) = 0 := rfl
 @[simp] lemma option.not_some_eq_zero {α} (x : α) : some x ≠ 0 := λ h, by injection h
@@ -61,28 +60,26 @@ lemma disjoint_equiv : h₁ # h₂ ↔ disjoint' h₁ h₂ :=
 }
 
 def star : hprop := λ h, ∃ (h₁ h₂ : heap),
+def star : set heap := λ h, ∃ (h₁ h₂ : heap),
 H₁ h₁ ∧ H₂ h₂ ∧ disjoint h₁ h₂ ∧ h = h₁ + h₂
 
 infixr ` ⋆ `:71 := star
 
 def eval : Prog → heap → heap .
 
-def hoare (p : Prog) (P Q : hprop) : Prop :=
+def hoare (p : Prog) (P Q : set heap) : Prop :=
 ∀ s, P s → Q (eval p s)
 
-def triple (t : Prog) (P Q : hprop) : Prop :=
+def triple (t : Prog) (P Q : set heap) : Prop :=
 ∀ H, hoare t (P ⋆ H) (Q ⋆ H)
 
-def hprop_ext : (∀ x, H₁ x ↔ H₂ x) → H₁ = H₂ := begin intro h, ext, exact h x end
-
 lemma disjoint.comm {h₁ h₂} : h₁ # h₂ = h₂ # h₁ := by simp [heap.disjoint, disjoint.comm]
-
 
 lemma disjoint.add_comm {h₁ h₂} : h₁ # h₂ → h₁ + h₂ = h₂ + h₁ := begin
 intros dis,
 have dis' := disjoint_equiv.mp dis,
 ext l,
-cases dis' l; simp [h],
+cases dis' l; simp only [h, finsupp.coe_add, pi.add_apply, option.none_eq_zero, zero_add, add_zero]
 end
 
 lemma star.symm : ∀ x, (H₁ ⋆ H₂) x → (H₂ ⋆ H₁) x := begin
@@ -93,8 +90,7 @@ refine ⟨h₂, h₁, p2, p1, dis.symm, _⟩,
 end
 
 theorem star.comm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
-apply hprop_ext,
-intro h,
+ext,
 split ; exact star.symm _ _ _,
 end
 
@@ -103,7 +99,7 @@ lemma disjoint.sum_r {h₁ h₂ h₃ : heap} : h₁ # (h₂ + h₃) ↔ h₁ # h
 
 theorem star_assoc' : ∀ x, ((H₁ ⋆ H₂) ⋆ H₃) x → (H₁ ⋆ (H₂ ⋆ H₃)) x := begin
 simp only [star],
-rintros x ⟨h₁', h₃, ⟨h₁,h₂,p1,p2,dis12,split1'⟩, p3, dis3, splitx⟩,
+rintro x ⟨_, h₃, ⟨h₁,h₂,p1,p2,dis12,split1'⟩, p3, dis3, splitx⟩,
 rw split1' at dis3,
 obtain ⟨dis13, dis23⟩ := (disjoint.sum_l.mp dis3),
 refine ⟨h₁, (h₂ + h₃), p1, ⟨h₂, h₃, p2, p3, dis23, rfl⟩, _, _⟩,
@@ -112,16 +108,18 @@ refine ⟨h₁, (h₂ + h₃), p1, ⟨h₂, h₃, p2, p3, dis23, rfl⟩, _, _⟩
 end
 
 theorem star_assoc : (H₁ ⋆ H₂) ⋆ H₃ = H₁ ⋆ (H₂ ⋆ H₃) := begin
-apply hprop_ext, intro x, refine ⟨star_assoc' _ _ _ x, _⟩,
-{ intro h, rw star.comm at h, rw star.comm H₂ H₃ at h,
-  have := star_assoc' _ _ _ x h,
-  rw star.comm, rw star.comm H₁ H₂, assumption }
+ext,
+refine ⟨star_assoc' _ _ _ x, _⟩,
+intro h,
+rw [star.comm, star.comm H₂ H₃] at h,
+have := star_assoc' _ _ _ x h,
+rw star.comm, rw star.comm H₁ H₂, assumption,
 end
 
 def frame : ∀ (t : Prog) H, triple t P Q → triple t (P ⋆ H) (Q ⋆ H) := begin
 intros _ _ h,
 simp only [triple, star_assoc] at *,
-intro H',
+intro _,
 exact h _,
 end
 
