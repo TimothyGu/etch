@@ -15,10 +15,6 @@ variables
 [linear_order ι] [has_hmul α β γ]
 [semiring α] [semiring β] [semiring γ]
 
--- noncomputable instance finsupp.mul_zero_class : mul_zero_class (ι →₀ α) :=
--- { }
-
-
 noncomputable instance finsupp.has_mul  : has_mul (ι →₀ α) :=
 ⟨λ a b, finsupp.zip_with (*) (zero_mul _) a b⟩
 
@@ -233,13 +229,10 @@ end
 lemma mul_succ : (a ⋆ b : BoundedStream _ _ γ).δ = a.δ ⋆ b ∨
                  (a ⋆ b : BoundedStream _ _ γ).δ = a ⋆ b.δ :=
 begin
-sorry,
+  sorry,
 end
-end BoundedStream
 
--- structure SimpleStream (σ ι α : Type) [linear_order ι] extends BoundedStream σ ι α :=
--- (monotonic : ∀ s, index s ≤ index (next s))
--- (reduced : ∀ s t, ready s → ready t → index s = index t → s = t)
+end BoundedStream
 
 class is_simple (q : BoundedStream σ ι α) : Prop :=
 (monotonic : ∀ s, q.index s ≤ q.index (q.next s))
@@ -247,31 +240,20 @@ class is_simple (q : BoundedStream σ ι α) : Prop :=
 
 variables {σ₁ σ₂ : Type}
 
+open BoundedStream
+
 instance hmul.is_simple
 (a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β)
 [is_simple a] [is_simple b] : is_simple (a ⋆ b : BoundedStream _ _ γ) :=
 ⟨begin rintros ⟨s₁, s₂⟩,
-    cases BoundedStream.mul_next_state a b s₁ s₂;
-    { rw h, apply max_le_max; simp only [(⋆), BoundedStream.hmul, BoundedStream.index, is_simple.monotonic] },
-  end, begin
-    rintro ⟨s₁, s₂⟩ ⟨t₁, t₂⟩ aready bready ih,
-    -- ready → ai₁ = bi₁, ai₂ = bi₂. index = index → ai₁ = ai₂. reduced a → s₁ = s₂, etc
-    sorry
-    end⟩
-
---variables
---(a : SimpleStream σ₁ ι α) (b : SimpleStream σ₂ ι α)
-
---noncomputable instance : has_hmul (ι →₀ α) (ι →₀ β) (ι →₀ γ) := ⟨finsupp.zip_with (⋆) $ hmul_zero_class.mul_zero 0⟩
---set_option trace.class_instances true
-open BoundedStream
-lemma multiply : ∀ (a b c d : ι →₀ α), (a + b) * (c + d) = a*c + a*d + b*c + b*d := begin
-intros,
-rw [left_distrib],
-rw [right_distrib],
-rw [right_distrib],
-abel,
-end
+   cases BoundedStream.mul_next_state a b s₁ s₂;
+   { rw h, apply max_le_max; simp only [(⋆), hmul, index, is_simple.monotonic] },
+ end,
+ begin
+   rintro ⟨s₁, s₂⟩ ⟨t₁, t₂⟩ aready bready ih,
+   -- ready → ai₁ = bi₁, ai₂ = bi₂. index = index → ai₁ = ai₂. reduced a → s₁ = s₂, etc
+   sorry
+ end⟩
 
 variables
 (a : BoundedStream σ ι α) (b : BoundedStream σ ι α)
@@ -333,17 +315,11 @@ begin
       cases em (a ≤ b),
       { rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
         rw [right_distrib],
-        rw mul_eval₀ a b,
-        rw reduced_mul_eval h,
-        rw le_succ_is_left h,
-        rw @ih delta_is_simple },
+        rw [mul_eval₀ a b, reduced_mul_eval h, le_succ_is_left h, @ih delta_is_simple] },
       { have : b ≤ a := state_le.le_of_not_le h,
         rw [b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
         rw [left_distrib],
-        rw mul_eval₀ a b,
-        rw reduced_mul_eval' this,
-        rw le_succ_is_right this,
-        rw ih' } } }
+        rw [mul_eval₀ a b, reduced_mul_eval' this, le_succ_is_right this, ih'] } } }
 end
 
 . /-
