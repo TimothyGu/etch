@@ -8,15 +8,28 @@ infix ` ⋆ `:71 := has_hmul.mul
 
 variables {σ α ι γ β : Type}
 variables (R : Type) [add_zero_class R] [has_one R] [has_mul R]
-def context := Ident → IdentVal R
-variables [linear_order ι] [has_hmul α β γ]
-[semiring α]
-[semiring β]
-[semiring γ]
 
-noncomputable instance finsupp.has_mul : has_mul (ι →₀ β) := ⟨λ a b, finsupp.zip_with (*) (zero_mul _) a b⟩
+def context := Ident → IdentVal R
+
+variables
+[linear_order ι] [has_hmul α β γ]
+[semiring α] [semiring β] [semiring γ]
+
+-- noncomputable instance finsupp.has_mul {β} [mul_zero_class β] : has_mul (ι →₀ β) := ⟨λ a b, finsupp.zip_with (*) (zero_mul _) a b⟩
 noncomputable instance finsupp.mul_zero_class : mul_zero_class (ι →₀ α) :=
-{ zero_mul := sorry, mul_zero := sorry, .. finsupp.has_mul, .. finsupp.has_zero }
+{ mul := λ a b, finsupp.zip_with (*) (zero_mul _) a b,
+  zero_mul :=
+  begin
+    intros, rw ← finsupp.coe_eq_zero,
+    apply mul_zero_class.zero_mul,
+  end,
+
+  mul_zero :=
+  begin
+    intros, rw ← finsupp.coe_eq_zero,
+    apply mul_zero_class.mul_zero,
+  end,
+  .. finsupp.has_zero }
 
 noncomputable instance finsupp.distrib : distrib (ι →₀ α) :=
 { left_distrib := sorry, right_distrib := sorry, ..finsupp.has_add, ..finsupp.mul_zero_class }
@@ -27,14 +40,6 @@ noncomputable instance finsupp.distrib : distrib (ι →₀ α) :=
 -- noncomputable instance finsupp.nus : non_unital_semiring (ι →₀ α) :=
 -- { .. finsupp.has_add, .. finsupp.mul_zero_class}
 
-structure status (σ ι α : Type) :=
-(next  : σ)
-(index : ι)
-(value : α)
-(ready : bool)
-(valid : bool)
-(state : σ) -- redundant
-
 structure BoundedStream (σ ι α : Type) :=
 (next  : function.End σ)
 (index : σ → ι)
@@ -44,6 +49,14 @@ structure BoundedStream (σ ι α : Type) :=
 (bound : ℕ)
 (state : σ)
 (bound_valid : ∀ i, bound ≤ i → ready (next ^ i • state) = ff ∧ valid (next ^ i • state) = ff)
+
+structure status (σ ι α : Type) :=
+(next  : σ)
+(index : ι)
+(value : α)
+(ready : bool)
+(valid : bool)
+(state : σ)
 
 variables {R}
 def BoundedStreamGen.of_gen {ι' α'} [StreamEval R ι ι'] [StreamEval R α α']
@@ -65,15 +78,13 @@ namespace BoundedStream
 
 variables (s : BoundedStream σ ι α)
 
-def now : status σ ι α :=
+def now {σ ι α} (s : BoundedStream σ ι α) : status σ ι α :=
 { next  := s.next s.state,
   index := s.index s.state,
   value := s.value s.state,
   ready := s.ready s.state,
   valid := s.valid s.state,
   state := s.state }
-
---[add_zero_class α] [has_one α] [has_mul α]
 
 instance : bifunctor (BoundedStream σ) :=
 { bimap := λ _ _ _ _ i v g, { g with value := v ∘ g.value, index := i ∘ g.index } }
@@ -127,8 +138,8 @@ induction bound generalizing s,
 { apply h, apply bound_ih, simp [δ, *] },
 end
 
-noncomputable def  eval₀ {σ ι α} [has_zero α] (s : BoundedStream σ ι α) : ι →₀ α :=
-if s.ready s.state then finsupp.single (s.index s.state) (s.value s.state) else 0
+noncomputable def eval₀ {σ ι α} [has_zero α] (s : BoundedStream σ ι α) : ι →₀ α :=
+if s.now.ready then finsupp.single s.now.index s.now.value else 0
 
 noncomputable def eval' : ℕ → (BoundedStream σ ι α) → ι →₀ α
 | 0 _ := 0
@@ -274,40 +285,65 @@ variables
 (a : BoundedStream σ ι α) (b : BoundedStream σ ι α)
 [is_simple a] [is_simple b]
 
+variables {a} {b}
 lemma lt_mul_is_zero  : a < b → a.eval₀ * b.eval = 0 := sorry
 lemma lt_mul_0_is_zero  : a < b → a.eval₀ * b.eval₀ = 0 := sorry
 lemma le_succ_is_left  : a ≤ b → (a ⋆ b : BoundedStream _ _ α).δ = a.δ ⋆ b := sorry
---lemma lt_mul_is_zero' : ¬ state_lt a b (a.state, b.state) → b.eval₀ * a.eval = 0 := sorry
+lemma le_succ_is_right : b ≤ a → (a ⋆ b : BoundedStream _ _ α).δ = a ⋆ b.δ := sorry
 --lemma mono_delta [is_simple a] : a.now.index ≤ a.δ.now.index := sorry
 lemma mono_delta [is_simple a] : a ≤ a.δ := sorry
-instance [is_simple a] : is_simple a.δ := sorry
+lemma reduced_mul_eval : a ≤ b → a.eval₀ * b.eval₀ = a.eval₀ * b.eval := sorry
+lemma reduced_mul_eval' : b ≤ a → a.eval₀ * b.eval₀ = a.eval * b.eval₀ := sorry
+lemma terminal_eval_zero : a.bound = 0 → a.eval = 0 := sorry
+instance delta_is_simple [is_simple a] : is_simple a.δ := sorry
 
-example {α} [preorder α] : ∀ a b c : α, a < b → b ≤ c → a < c := begin library_search, end
 theorem mul_spec
-: (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval := begin
-cases em (a < b),
-rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
-rw [right_distrib],
-rw [lt_mul_is_zero _ _ h],
-rw mul_eval₀ a b,
-rw [lt_mul_0_is_zero],
-rw le_succ_is_left,
-simp only [zero_add],
--- induction ^
+: (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval :=
+begin
+  unfreezingI { revert b },
+  unfreezingI { revert a },
+  apply stream_elim (λ a, ∀ [is_simple a] (b : BoundedStream _ _ _)  [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval),
+  {
+    intros a terminal _ _ _,
+    resetI,
+    rw terminal_eval_zero terminal,
+    simp,
+    sorry,
+  },
 
--- rw [a.eval_identity, b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
--- rw mul_eval₀ a b,
--- rw [lt_mul_is_zero _ _ (lt_of_lt_of_le h (mono_delta _))],
--- rw multiply,
---cases em (state_lt a b (a.state, b.state)),
---cases mul_succ a b,
+  intros a ih _,
+  apply stream_elim (λ b, ∀ [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval);
+    intros b ih' _,
+  { sorry },
 
+  cases em (a ≤ b),
+  resetI,
+
+  rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
+  --rw [b.eval_identity],
+  rw [right_distrib],
+  --rw [left_distrib],
+  rw mul_eval₀ a b,
+  rw le_succ_is_left h,
+  rw reduced_mul_eval h,
+  rw @ih delta_is_simple,
+  have : b ≤ a,
+  {
+    simp [(≤), preorder.le, state_le, not_or_distrib] at h ⊢,
+    sorry,
+  },
+
+  rw [b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
+  --rw [b.eval_identity],
+  rw [left_distrib],
+  --rw [left_distrib],
+  rw mul_eval₀ a b,
+  resetI,
+  rw le_succ_is_right this,
+  rw reduced_mul_eval' this,
+  rw ih',
 end
 
 . /-
-for mul_eval₀:
-  not ready -> eval₀ = 0
-
-a < b → a.eval₀ * b.eval = 0
 merge valid-bound/ready?
 -/ .
