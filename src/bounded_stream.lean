@@ -15,30 +15,31 @@ variables
 [linear_order ι] [has_hmul α β γ]
 [semiring α] [semiring β] [semiring γ]
 
--- noncomputable instance finsupp.has_mul {β} [mul_zero_class β] : has_mul (ι →₀ β) := ⟨λ a b, finsupp.zip_with (*) (zero_mul _) a b⟩
-noncomputable instance finsupp.mul_zero_class : mul_zero_class (ι →₀ α) :=
-{ mul := λ a b, finsupp.zip_with (*) (zero_mul _) a b,
-  zero_mul :=
-  begin
-    intros, rw ← finsupp.coe_eq_zero,
-    apply mul_zero_class.zero_mul,
-  end,
+-- noncomputable instance finsupp.mul_zero_class : mul_zero_class (ι →₀ α) :=
+-- { }
 
-  mul_zero :=
-  begin
-    intros, rw ← finsupp.coe_eq_zero,
-    apply mul_zero_class.mul_zero,
-  end,
-  .. finsupp.has_zero }
 
-noncomputable instance finsupp.distrib : distrib (ι →₀ α) :=
-{ left_distrib := sorry, right_distrib := sorry, ..finsupp.has_add, ..finsupp.mul_zero_class }
+noncomputable instance finsupp.has_mul  : has_mul (ι →₀ α) :=
+⟨λ a b, finsupp.zip_with (*) (zero_mul _) a b⟩
 
-#check non_unital_semiring
+lemma finsupp.mul_apply (g₁ g₂ : ι →₀ α) (a : ι) : (g₁ * g₂) a = g₁ a * g₂ a := rfl
 
--- todo
--- noncomputable instance finsupp.nus : non_unital_semiring (ι →₀ α) :=
--- { .. finsupp.has_add, .. finsupp.mul_zero_class}
+#check pi.distrib -- todo, tactic like this?
+noncomputable instance finsupp.non_unital_semiring : non_unital_semiring (ι →₀ α) :=
+{
+  zero := 0,
+  add_assoc := λ a b c, fun_like.ext _ _ (by simp [finsupp.add_apply, add_assoc]),
+  zero_add  := λ a,     fun_like.ext _ _ (by simp [finsupp.add_apply]),
+  add_zero  := λ a,     fun_like.ext _ _ (by simp [finsupp.add_apply]),
+  add_comm  := λ a b,   fun_like.ext _ _ (by simp [finsupp.add_apply, add_comm] ),
+  zero_mul  := λ a,     fun_like.ext _ _ (by simp [finsupp.mul_apply]),
+  mul_zero  := λ a,     fun_like.ext _ _ (by simp [finsupp.mul_apply]),
+
+  left_distrib  := λ a b c, by simp [fun_like.ext_iff, finsupp.mul_apply, finsupp.add_apply, left_distrib],
+  right_distrib := λ a b c, by simp [fun_like.ext_iff, finsupp.mul_apply, finsupp.add_apply, right_distrib],
+  mul_assoc     := λ a b c, by simp [fun_like.ext_iff, finsupp.mul_apply, mul_assoc],
+
+  ..finsupp.has_mul, ..finsupp.has_add, }
 
 structure BoundedStream (σ ι α : Type) :=
 (next  : function.End σ)
@@ -158,7 +159,7 @@ split_ifs with ready,
   obtain ⟨ nr, _ ⟩:= s.bound_valid 0 (nonpos_iff_eq_zero.mpr h),
   { simp at nr,
     convert ready,
-    simp [nr] } },
+    simp [now, nr], } },
 { refl }
 end
 
@@ -194,7 +195,6 @@ instance : preorder (BoundedStream σ ι α) :=
  le_trans := begin simp [state_le], intros _ _ _ h1 h2, cases h1; cases h2, apply or.inl, apply lt_trans h1 h2, apply or.inl, rw ← h2.1, assumption, apply or.inl, rw h1.1, assumption, apply or.inr, split, exact eq.trans h1.1 h2.1, apply le_trans h1.2 h2.2, end
 }
 
-#check acc
 class Merge (σ : Type) := (merge : σ × σ → σ)
 
 def hmul {α β γ} [has_hmul α β γ]
@@ -222,14 +222,6 @@ def hmul {α β γ} [has_hmul α β γ]
 -- }
 
 instance {α β γ} [has_hmul α β γ] : has_hmul (BoundedStream σ₁ ι α) (BoundedStream σ₂ ι β) (BoundedStream (σ₁ × σ₂) ι γ) := ⟨hmul⟩
-
-@[simp] lemma mul_eval₀
-(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α)
-: (a ⋆ b : BoundedStream _ _ α).eval₀ = a.eval₀ * b.eval₀ := begin
-simp [hmul, eval₀],
-split_ifs with h h1 h2; try {simp [not_and_distrib] at h |- }; try { simp }; sorry
--- automate more ^
-end
 
 lemma mul_next_state : (a ⋆ b : BoundedStream _ _ γ).next (s₁, s₂) = (a.next s₁, s₂) ∨
                        (a ⋆ b : BoundedStream _ _ γ).next (s₁, s₂) = (s₁, b.next s₂) :=
@@ -285,17 +277,39 @@ variables
 (a : BoundedStream σ ι α) (b : BoundedStream σ ι α)
 [is_simple a] [is_simple b]
 
+section lemmas
 variables {a} {b}
+lemma state_le.le_of_not_le : ¬ a ≤ b → b ≤ a := begin
+  intro h,
+  simp [(≤), preorder.le, state_le, not_or_distrib] at h ⊢,
+  have i_le : b.index b.state ≤ a.index a.state := h.1,
+  cases le_iff_eq_or_lt.mp i_le with this this,
+  { exact or.inr ⟨this, le_of_lt (lt_of_not_le (h.2 this.symm))⟩ },
+  { exact or.inl this }
+end
+instance delta_is_simple [h : is_simple a] : is_simple a.δ := {.. h}
+
+/- todo: -/
+
+@[simp] lemma mul_eval₀
+(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α)
+: (a ⋆ b : BoundedStream _ _ α).eval₀ = a.eval₀ * b.eval₀ := begin
+simp [hmul, eval₀],
+split_ifs with h h1 h2; try {simp [not_and_distrib] at h |- }; try { simp }; sorry
+-- automate more ^
+end
 lemma lt_mul_is_zero  : a < b → a.eval₀ * b.eval = 0 := sorry
 lemma lt_mul_0_is_zero  : a < b → a.eval₀ * b.eval₀ = 0 := sorry
 lemma le_succ_is_left  : a ≤ b → (a ⋆ b : BoundedStream _ _ α).δ = a.δ ⋆ b := sorry
 lemma le_succ_is_right : b ≤ a → (a ⋆ b : BoundedStream _ _ α).δ = a ⋆ b.δ := sorry
---lemma mono_delta [is_simple a] : a.now.index ≤ a.δ.now.index := sorry
 lemma mono_delta [is_simple a] : a ≤ a.δ := sorry
-lemma reduced_mul_eval : a ≤ b → a.eval₀ * b.eval₀ = a.eval₀ * b.eval := sorry
+lemma reduced_mul_eval  : a ≤ b → a.eval₀ * b.eval₀ = a.eval₀ * b.eval := sorry
 lemma reduced_mul_eval' : b ≤ a → a.eval₀ * b.eval₀ = a.eval * b.eval₀ := sorry
 lemma terminal_eval_zero : a.bound = 0 → a.eval = 0 := sorry
-instance delta_is_simple [is_simple a] : is_simple a.δ := sorry
+lemma terminal_zero_mul  : a.bound = 0 → (a ⋆ b : BoundedStream _ _ α).eval = 0 := sorry
+lemma terminal_mul_zero  : b.bound = 0 → (a ⋆ b : BoundedStream _ _ α).eval = 0 := sorry
+end lemmas
+
 
 theorem mul_spec
 : (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval :=
@@ -303,45 +317,33 @@ begin
   unfreezingI { revert b },
   unfreezingI { revert a },
   apply stream_elim (λ a, ∀ [is_simple a] (b : BoundedStream _ _ _)  [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval),
-  {
-    intros a terminal _ _ _,
+  { intros a terminal _ _ _,
     resetI,
-    rw terminal_eval_zero terminal,
-    simp,
-    sorry,
-  },
+    simp [terminal_eval_zero terminal, terminal_zero_mul terminal] },
 
-  intros a ih _,
-  apply stream_elim (λ b, ∀ [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval);
-    intros b ih' _,
-  { sorry },
+  { intros a ih _,
+    apply stream_elim (λ b, ∀ [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval),
+    { intros b terminal _,
+      resetI,
+      simp [terminal_eval_zero terminal, terminal_mul_zero terminal] },
 
-  cases em (a ≤ b),
-  resetI,
+    { intros b ih' _,
+      resetI,
 
-  rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
-  --rw [b.eval_identity],
-  rw [right_distrib],
-  --rw [left_distrib],
-  rw mul_eval₀ a b,
-  rw le_succ_is_left h,
-  rw reduced_mul_eval h,
-  rw @ih delta_is_simple,
-  have : b ≤ a,
-  {
-    simp [(≤), preorder.le, state_le, not_or_distrib] at h ⊢,
-    sorry,
-  },
-
-  rw [b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
-  --rw [b.eval_identity],
-  rw [left_distrib],
-  --rw [left_distrib],
-  rw mul_eval₀ a b,
-  resetI,
-  rw le_succ_is_right this,
-  rw reduced_mul_eval' this,
-  rw ih',
+      cases em (a ≤ b),
+      { rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
+        rw [right_distrib],
+        rw mul_eval₀ a b,
+        rw reduced_mul_eval h,
+        rw le_succ_is_left h,
+        rw @ih delta_is_simple },
+      { have : b ≤ a := state_le.le_of_not_le h,
+        rw [b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
+        rw [left_distrib],
+        rw mul_eval₀ a b,
+        rw reduced_mul_eval' this,
+        rw le_succ_is_right this,
+        rw ih' } } }
 end
 
 . /-
