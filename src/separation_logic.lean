@@ -52,7 +52,7 @@ def disjoint  (h₁ h₂ : heap) : Prop := disjoint h₁.support h₂.support
 
 infix  ` # `:80  := disjoint
 
-lemma disjoint_equiv : h₁ # h₂ ↔ ∀ loc, h₁ loc = none ∨ h₂ loc = none :=
+lemma disjoint_equiv : h₁ # h₂ ↔ ∀ loc, h₁ loc = 0 ∨ h₂ loc = 0 :=
 by simp [disjoint, _root_.disjoint, finset.subset_empty, finset.eq_empty_iff_forall_not_mem, not_and_distrib]
 
 def star : set heap := λ h, ∃ (h₁ h₂ : heap),
@@ -83,15 +83,14 @@ exact ⟨h₂, h₁, p2, p1, dis.symm, dis.add_comm ▸ split⟩,
 end
 
 theorem star.comm : H₁ ⋆ H₂ = H₂ ⋆ H₁ := begin
-ext,
-split ; exact star.symm _ _ _,
+ext, split ; exact star.symm _ _ _,
 end
 
-lemma disjoint.sum_l  {h₁ h₂ h₃ : heap} : (h₁ + h₂) # h₃ ↔ h₁ # h₃ ∧ h₂ # h₃ := by simp [disjoint, support_eq]
+lemma disjoint.sum_l {h₁ h₂ h₃ : heap} : (h₁ + h₂) # h₃ ↔ h₁ # h₃ ∧ h₂ # h₃ := by simp [disjoint, support_eq]
 lemma disjoint.sum_r {h₁ h₂ h₃ : heap} : h₁ # (h₂ + h₃) ↔ h₁ # h₂ ∧ h₁ # h₃ := by simp [disjoint, support_eq]
 
 theorem star_assoc' : ∀ x, ((H₁ ⋆ H₂) ⋆ H₃) x → (H₁ ⋆ (H₂ ⋆ H₃)) x := begin
-simp only [star],
+--simp only [star],
 rintro x ⟨_, h₃, ⟨h₁,h₂,p1,p2,dis12,split1'⟩, p3, dis3, splitx⟩,
 rw split1' at dis3,
 obtain ⟨dis13, dis23⟩ := (disjoint.sum_l.mp dis3),
