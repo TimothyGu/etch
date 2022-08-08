@@ -37,14 +37,16 @@ noncomputable instance finsupp.non_unital_semiring : non_unital_semiring (ι →
 
   ..finsupp.has_mul, ..finsupp.has_add, }
 
-structure BoundedStream (σ ι α : Type) :=
+structure Stream (σ ι α : Type) :=
 (next  : function.End σ)
 (index : σ → ι)
 (value : σ → α)
 (ready : σ → bool)
 (valid : σ → bool)
-(bound : ℕ)
 (state : σ)
+
+structure BoundedStream (σ ι α : Type) extends Stream σ ι α :=
+(bound : ℕ)
 (bound_valid : ∀ i, bound ≤ i → ready (next ^ i • state) = ff ∧ valid (next ^ i • state) = ff)
 
 structure status (σ ι α : Type) :=
@@ -127,12 +129,15 @@ def δ : BoundedStream σ ι α :=
   end
 }
 
-def stream_elim (P : BoundedStream σ ι α → Prop) : (∀ (s : BoundedStream σ ι α), s.bound = 0 → P s) → (∀ (s : BoundedStream σ ι α), P s.δ → P s) → ∀ s, P s := begin
-intros base h s,
-generalize h : s.bound = bound,
-induction bound generalizing s,
-{ apply base, rw h_1 },
-{ apply h, apply bound_ih, simp [δ, *] },
+--@[elab_as_eliminator]
+def stream_elim (P : BoundedStream σ ι α → Prop) :
+(∀ (s : BoundedStream σ ι α), s.bound = 0 → P s) → (∀ (s : BoundedStream σ ι α), P s.δ → P s) → ∀ s, P s :=
+begin
+  intros base h s,
+  generalize h : s.bound = bound,
+  induction bound generalizing s,
+  { apply base, rw h_1 },
+  { apply h, apply bound_ih, simp [δ, *] },
 end
 
 noncomputable def eval₀ {σ ι α} [has_zero α] (s : BoundedStream σ ι α) : ι →₀ α :=
@@ -159,18 +164,15 @@ split_ifs with ready,
 { refl }
 end
 
-@[simp] lemma bound_delta_zero : s.bound = 0 → s.δ.bound = 0 :=
-by simp [δ, nat.pred] { contextual := tt }
-@[simp] lemma bound_delta_succ {n : ℕ} : s.bound = n.succ → s.δ.bound = n :=
-by simp [δ, nat.pred] { contextual := tt }
+@[simp] lemma bound_delta_zero : s.bound = 0 → s.δ.bound = 0 := λ _, by simp [δ, *]
+@[simp] lemma bound_delta_succ {n : ℕ} : s.bound = n.succ → s.δ.bound = n := λ _, by simp [δ, *]
 
-lemma eval_identity : eval s = eval₀ s + eval s.δ := begin
+lemma eval_identity : s.eval = s.eval₀ + s.δ.eval := begin
 simp [eval, eval'],
 cases em (s.bound = 0),
 { simp [h, eval'], },
 { obtain ⟨_, this⟩ := nat.exists_eq_succ_of_ne_zero h,
-  rw [this, eval', bound_delta_succ],
-  assumption }
+  rw [this, eval', bound_delta_succ s this] }
 end
 
 variables {σ₁ σ₂ : Type}
@@ -240,6 +242,7 @@ class is_simple (q : BoundedStream σ ι α) : Prop :=
 
 variables {σ₁ σ₂ : Type}
 
+open Stream
 open BoundedStream
 
 instance hmul.is_simple
@@ -256,12 +259,13 @@ instance hmul.is_simple
  end⟩
 
 variables
-(a : BoundedStream σ ι α) (b : BoundedStream σ ι α)
-[is_simple a] [is_simple b]
+(a : BoundedStream σ ι α) [is_simple a]
+(b : BoundedStream σ ι α) [is_simple b]
 
 section lemmas
 variables {a} {b}
-lemma state_le.le_of_not_le : ¬ a ≤ b → b ≤ a := begin
+lemma state_le.le_of_not_le : ¬ a ≤ b → b ≤ a :=
+begin
   intro h,
   simp [(≤), preorder.le, state_le, not_or_distrib] at h ⊢,
   have i_le : b.index b.state ≤ a.index a.state := h.1,
@@ -271,20 +275,20 @@ lemma state_le.le_of_not_le : ¬ a ≤ b → b ≤ a := begin
 end
 instance delta_is_simple [h : is_simple a] : is_simple a.δ := {.. h}
 
-/- todo: -/
+. /- todo: -/
 
 @[simp] lemma mul_eval₀
-(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α)
-: (a ⋆ b : BoundedStream _ _ α).eval₀ = a.eval₀ * b.eval₀ := begin
-simp [hmul, eval₀],
-split_ifs with h h1 h2; try {simp [not_and_distrib] at h |- }; try { simp }; sorry
--- automate more ^
+(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α) : (a ⋆ b : BoundedStream _ _ α).eval₀ = a.eval₀ * b.eval₀ :=
+begin
+  simp [hmul, eval₀],
+  split_ifs with h h1 h2; try {simp [not_and_distrib] at h |- }; try { simp }; sorry
+  -- automate more ^
 end
 lemma lt_mul_is_zero  : a < b → a.eval₀ * b.eval = 0 := sorry
 lemma lt_mul_0_is_zero  : a < b → a.eval₀ * b.eval₀ = 0 := sorry
 lemma le_succ_is_left  : a ≤ b → (a ⋆ b : BoundedStream _ _ α).δ = a.δ ⋆ b := sorry
 lemma le_succ_is_right : b ≤ a → (a ⋆ b : BoundedStream _ _ α).δ = a ⋆ b.δ := sorry
-lemma mono_delta [is_simple a] : a ≤ a.δ := sorry
+lemma mono_delta : a ≤ a.δ := sorry
 lemma reduced_mul_eval  : a ≤ b → a.eval₀ * b.eval₀ = a.eval₀ * b.eval := sorry
 lemma reduced_mul_eval' : b ≤ a → a.eval₀ * b.eval₀ = a.eval * b.eval₀ := sorry
 lemma terminal_eval_zero : a.bound = 0 → a.eval = 0 := sorry
@@ -293,35 +297,26 @@ lemma terminal_mul_zero  : b.bound = 0 → (a ⋆ b : BoundedStream _ _ α).eval
 end lemmas
 
 
-theorem mul_spec
-: (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval :=
+theorem mul_spec : (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval :=
 begin
-  unfreezingI { revert b },
-  unfreezingI { revert a },
-  apply stream_elim (λ a, ∀ [is_simple a] (b : BoundedStream _ _ _)  [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval),
-  { intros a terminal _ _ _,
-    resetI,
-    simp [terminal_eval_zero terminal, terminal_zero_mul terminal] },
-
-  { intros a ih _,
-    apply stream_elim (λ b, ∀ [is_simple b], (a ⋆ b : BoundedStream _ _ α).eval = a.eval * b.eval),
-    { intros b terminal _,
-      resetI,
-      simp [terminal_eval_zero terminal, terminal_mul_zero terminal] },
-
-    { intros b ih' _,
-      resetI,
-
-      cases em (a ≤ b),
+  unfreezingI { induction a using BoundedStream.stream_elim with a terminal a ih_a generalizing b},
+  { simp [terminal_eval_zero terminal, terminal_zero_mul terminal] },
+  { unfreezingI { induction b using BoundedStream.stream_elim with b terminal b ih_b },
+    { simp [terminal_eval_zero terminal, terminal_mul_zero terminal] },
+    { cases em (a ≤ b),
       { rw [a.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
         rw [right_distrib],
-        rw [mul_eval₀ a b, reduced_mul_eval h, le_succ_is_left h, @ih delta_is_simple] },
+        rw [mul_eval₀ a b, reduced_mul_eval h, le_succ_is_left h, @ih_a delta_is_simple] },
       { have : b ≤ a := state_le.le_of_not_le h,
         rw [b.eval_identity, (a ⋆ b : BoundedStream _ _ α).eval_identity],
         rw [left_distrib],
-        rw [mul_eval₀ a b, reduced_mul_eval' this, le_succ_is_right this, ih'] } } }
+        rw [mul_eval₀ a b, reduced_mul_eval' this, le_succ_is_right this, ih_b] } } },
 end
 
 . /-
+independence lemmas
+potential failure
 merge valid-bound/ready?
+turing.eval
+elab as eliminator
 -/ .
