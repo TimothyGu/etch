@@ -1,10 +1,11 @@
 import verification.verify
 import tactic
 
+open_locale classical
+
 class has_hmul (α β : Type*) (γ : out_param Type*) :=
   (mul : α → β → γ)
 instance hmul_of_mul {α : Type*} [has_mul α] : has_hmul α α α := ⟨has_mul.mul⟩
-infix ` ⋆ `:71 := has_hmul.mul
 
 variables {σ α ι γ β : Type}
 variables (R : Type) [add_zero_class R] [has_one R] [has_mul R]
@@ -41,7 +42,7 @@ structure Stream (σ ι α : Type) :=
 (next  : function.End σ)
 (index : σ → ι)
 (value : σ → α)
-(ready : σ → bool)
+(ready : σ → Prop)
 (valid : σ → bool)
 (state : σ)
 
@@ -53,7 +54,7 @@ structure status (σ ι α : Type) :=
 (next  : σ)
 (index : ι)
 (value : α)
-(ready : bool)
+(ready : Prop)
 (valid : bool)
 (state : σ)
 
@@ -176,10 +177,12 @@ cases em (s.bound = 0),
 end
 
 variables {σ₁ σ₂ : Type}
-(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β)
+(a : BoundedStream σ₁ ι α)
+(b : BoundedStream σ₂ ι α)
+--(b : BoundedStream σ₂ ι β)
 (s₁ : σ₁) (s₂ : σ₂)
 
-def state_le {α β : Type} (a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β)
+noncomputable def state_le {α β : Type} (a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β)
 : σ₁ × σ₂ → bool :=
 λ s, a.index s.1 < b.index s.2 ∨ (a.index s.1 = b.index s.2 ∧ a.ready s.1 ≤ b.ready s.2)
 
@@ -190,22 +193,33 @@ def state_lt {α β : Type} (a : BoundedStream σ₁ ι α) (b : BoundedStream �
 instance : preorder (BoundedStream σ ι α) :=
 {le := λ a b, state_le a b (a.state, b.state),
  le_refl := by simp [state_le],
- le_trans := begin simp [state_le], intros _ _ _ h1 h2, cases h1; cases h2, apply or.inl, apply lt_trans h1 h2, apply or.inl, rw ← h2.1, assumption, apply or.inl, rw h1.1, assumption, apply or.inr, split, exact eq.trans h1.1 h2.1, apply le_trans h1.2 h2.2, end
+ le_trans := begin simp [state_le], intros _ _ _ h1 h2, cases h1; cases h2, apply or.inl, apply lt_trans h1 h2, apply or.inl, rw ← h2.1, assumption, apply or.inl, rw h1.1, assumption, apply or.inr, split, exact eq.trans h1.1 h2.1,
+
+apply h2.2 ∘ h1.2,
+--apply le_trans h1.2 h2.2,
+
+end
 }
 
 class Merge (σ : Type) := (merge : σ × σ → σ)
 
-def hmul {α β γ} [has_hmul α β γ]
-(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β) : BoundedStream (σ₁ × σ₂) ι γ :=
+noncomputable def hmul
+--{α β γ}
+{α}
+[has_mul α]
+--[has_hmul α β γ]
+(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α) : BoundedStream (σ₁ × σ₂) ι α :=
 { next  := λ s, if state_le a b s then (a.next s.1, s.2) else (s.1, b.next s.2),
   index := λ s, max (a.index s.1) (b.index s.2),
-  value := λ s, (a.value s.1) ⋆ (b.value s.2),
-  ready := λ s, a.ready s.1 && b.ready s.2 && (a.index s.1 = b.index s.2),
-  valid := λ s, a.valid s.1 && b.valid s.2,
+  value := λ s, (a.value s.1) * (b.value s.2),
+  ready := λ s, a.ready s.1 ∧ b.ready s.2 ∧ (a.index s.1 = b.index s.2),
+  valid := λ s, a.valid s.1 ∧ b.valid s.2,
   bound := a.bound + b.bound,
   state := (a.state, b.state),
   bound_valid := begin sorry end,
 }
+
+infix ` ⋆ `:71 := hmul
 
 -- def mul {α} [has_mul α] [Merge σ]
 -- (a b : BoundedStream σ ι α) : BoundedStream σ ι γ :=
@@ -219,25 +233,44 @@ def hmul {α β γ} [has_hmul α β γ]
 --   bound_valid := begin sorry end,
 -- }
 
-instance {α β γ} [has_hmul α β γ] : has_hmul (BoundedStream σ₁ ι α) (BoundedStream σ₂ ι β) (BoundedStream (σ₁ × σ₂) ι γ) := ⟨hmul⟩
+-- instance {α β γ} [has_hmul α β γ] : has_hmul (BoundedStream σ₁ ι α) (BoundedStream σ₂ ι β) (BoundedStream (σ₁ × σ₂) ι γ) := ⟨hmul⟩
 
-lemma mul_next_state : (a ⋆ b : BoundedStream _ _ γ).next (s₁, s₂) = (a.next s₁, s₂) ∨
-                       (a ⋆ b : BoundedStream _ _ γ).next (s₁, s₂) = (s₁, b.next s₂) :=
+#check le_max_of_le_left
+instance {α} [has_mul α] : has_hmul (BoundedStream σ₁ ι α) (BoundedStream σ₂ ι α) (BoundedStream (σ₁ × σ₂) ι α) := ⟨hmul⟩
+
+lemma hmul.ready : (a ⋆ b).now.ready = a.now.ready && b.now.ready && (a.now.index = b.now.index) := by simp [(⋆), now]
+@[simp] lemma hmul.value : (a ⋆ b).now.value = a.now.value * b.now.value
+:= by simp [(⋆), now]
+@[simp] lemma hmul.index : (a ⋆ b).now.ready → (a ⋆ b).now.index = a.now.index := by simp [(⋆), now] {contextual := tt}
+
+lemma mul_next_state : (a ⋆ b).next (s₁, s₂) = (a.next s₁, s₂) ∨
+                       (a ⋆ b).next (s₁, s₂) = (s₁, b.next s₂) :=
 begin
   simp only [(⋆), BoundedStream.hmul],
   cases a.state_le b (s₁, s₂); simp [prod.fst],
 end
 
-lemma mul_succ : (a ⋆ b : BoundedStream _ _ γ).δ = a.δ ⋆ b ∨
-                 (a ⋆ b : BoundedStream _ _ γ).δ = a ⋆ b.δ :=
+lemma mul_succ : (a ⋆ b).δ = a.δ ⋆ b ∨
+                 (a ⋆ b).δ = a ⋆ b.δ :=
 begin
   sorry,
 end
 
 end BoundedStream
 
+inductive reachable (q : BoundedStream σ ι α) : BoundedStream σ ι α → Type
+| refl : reachable q
+| step {r} : reachable r → reachable r.δ
+noncomputable lemma reachable.δ {q r : BoundedStream σ ι α} : reachable q.δ r → reachable q r := λ path,
+begin
+induction path with _ _ h,
+{ exact reachable.step reachable.refl },
+{ exact reachable.step h }
+end
+
 class is_simple (q : BoundedStream σ ι α) : Prop :=
-(monotonic : ∀ s, q.index s ≤ q.index (q.next s))
+(monotonic : ∀ r, reachable q r → r ≤ r.δ)
+--(monotonic : ∀ s, s ≤ (q.next s))
 (reduced : ∀ s t, q.ready s → q.ready t → q.index s = q.index t → s = t)
 
 variables {σ₁ σ₂ : Type}
@@ -246,8 +279,8 @@ open Stream
 open BoundedStream
 
 instance hmul.is_simple
-(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι β)
-[is_simple a] [is_simple b] : is_simple (a ⋆ b : BoundedStream _ _ γ) :=
+(a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α)
+[is_simple a] [is_simple b] : is_simple (a ⋆ b) :=
 ⟨begin rintros ⟨s₁, s₂⟩,
    cases BoundedStream.mul_next_state a b s₁ s₂;
    { rw h, apply max_le_max; simp only [(⋆), hmul, index, is_simple.monotonic] },
@@ -273,25 +306,65 @@ begin
   { exact or.inr ⟨this, le_of_lt (lt_of_not_le (h.2 this.symm))⟩ },
   { exact or.inl this }
 end
-instance delta_is_simple [h : is_simple a] : is_simple a.δ := {.. h}
 
-. /- todo: -/
+instance delta_is_simple {a :  BoundedStream σ ι α} [h : is_simple a] : is_simple a.δ :=
+{ monotonic := λ r path, is_simple.monotonic r (reachable.δ path),
+  .. h}
+
+lemma mono_delta : a ≤ a.δ := is_simple.monotonic a reachable.refl
+lemma terminal_eval_zero : a.bound = 0 → a.eval = 0 := λ h, by simp [eval, h, eval']
+
+#check finsupp.fun_like
+@[simp] lemma mul_zero_of_support_neq {i j : ι} {c d : α} : i ≠ j → finsupp.single i c * finsupp.single j d = 0 :=
+begin
+intros h,
+ext,
+simp [finsupp.single, finsupp.mul_apply],
+intros,
+cc,
+end
+
+@[simp] lemma mul_eq_support (i : ι) (c d : α) : finsupp.single i c * finsupp.single i d = finsupp.single i (c*d) :=
+begin
+  ext,
+  simp [finsupp.single, finsupp.mul_apply] { contextual := tt},
+end
 
 @[simp] lemma mul_eval₀
 (a : BoundedStream σ₁ ι α) (b : BoundedStream σ₂ ι α) : (a ⋆ b : BoundedStream _ _ α).eval₀ = a.eval₀ * b.eval₀ :=
 begin
-  simp [hmul, eval₀],
-  split_ifs with h h1 h2; try {simp [not_and_distrib] at h |- }; try { simp }; sorry
-  -- automate more ^
+  simp [eval₀],
+  split_ifs with h h1 h2; try {refl},
+
+  { have h' := h,
+    simp [hmul.ready] at h,
+    have := h.2.2,
+    simp [← this],
+    simp [h'] },
+
+  repeat
+  { simp [hmul.ready] at *,
+    cases_type* and,
+    contradiction },
+  simp [hmul.ready] at h,
+  cases_type* and,
+  have := h h_1 h_2,
+  rw mul_zero_of_support_neq this,
 end
-lemma lt_mul_is_zero  : a < b → a.eval₀ * b.eval = 0 := sorry
-lemma lt_mul_0_is_zero  : a < b → a.eval₀ * b.eval₀ = 0 := sorry
-lemma le_succ_is_left  : a ≤ b → (a ⋆ b : BoundedStream _ _ α).δ = a.δ ⋆ b := sorry
-lemma le_succ_is_right : b ≤ a → (a ⋆ b : BoundedStream _ _ α).δ = a ⋆ b.δ := sorry
-lemma mono_delta : a ≤ a.δ := sorry
+
+--lemma lt_mul_is_zero  : a < b → a.eval₀ * b.eval = 0 := sorry
+--lemma lt_mul_0_is_zero  : a < b → a.eval₀ * b.eval₀ = 0 := sorry
+. /- todo: -/
+lemma le_succ_is_left  : a ≤ b → (a ⋆ b).δ = a.δ ⋆ b :=
+begin
+intros h,
+rw [(⋆), δ],
+simp,
+-- oops: need a.bound = 0 → a ≤ b → b.bound = 0
+end
+lemma le_succ_is_right : b ≤ a → (a ⋆ b).δ = a ⋆ b.δ := sorry
 lemma reduced_mul_eval  : a ≤ b → a.eval₀ * b.eval₀ = a.eval₀ * b.eval := sorry
 lemma reduced_mul_eval' : b ≤ a → a.eval₀ * b.eval₀ = a.eval * b.eval₀ := sorry
-lemma terminal_eval_zero : a.bound = 0 → a.eval = 0 := sorry
 lemma terminal_zero_mul  : a.bound = 0 → (a ⋆ b : BoundedStream _ _ α).eval = 0 := sorry
 lemma terminal_mul_zero  : b.bound = 0 → (a ⋆ b : BoundedStream _ _ α).eval = 0 := sorry
 end lemmas
