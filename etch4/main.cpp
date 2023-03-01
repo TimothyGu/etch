@@ -113,9 +113,11 @@ static inline bool    bool_neg(bool x) { return !x; }
 
 static inline bool   str_lt(const char* a, const char* b) { return strcmp(a, b) < 0; }
 static inline bool   str_le(const char* a, const char* b) { return strcmp(a, b) <= 0; }
+static inline const char* str_max(const char* a, const char* b) { return str_lt(a, b) ? b : a; }
+static inline const char* str_min(const char* a, const char* b) { return str_lt(a, b) ? a : b; }
 static inline bool   str_eq(const char* a, const char* b) { return strcmp(a, b) == 0; }
-static inline int    str_atoi(char* a) { return atoi(a); }
-static inline double str_atof(char* a) { return atof(a); }
+static inline int    str_atoi(const char* a) { return atoi(a); }
+static inline double str_atof(const char* a) { return atof(a); }
 
 
 #ifdef ETCH_MATH
