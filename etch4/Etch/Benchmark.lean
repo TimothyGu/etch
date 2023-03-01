@@ -94,8 +94,8 @@ variable {ι : Type} [Tagged ι] [DecidableEq ι]
 -- todo: replace default interval
 def TACO.interval (pos : Var ℕ) (lower upper : E ℕ) : ι →ₛ (E ℕ) where
   σ := Var ℕ
-  succ pos i := .store_var pos $ pos + .call Op.ofBool ![(E.access is pos.expr <= i)]
-  skip pos i := .store_var pos $ pos + .call Op.ofBool ![(E.access is pos.expr << i)]
+  succ _ pos i := .store_var pos $ pos + .call Op.ofBool ![(E.access is pos.expr <= i)]
+  skip _ pos i := .store_var pos $ pos + .call Op.ofBool ![(E.access is pos.expr << i)]
   value pos := pos.expr
   ready _   := 1
   index pos := .access is pos.expr

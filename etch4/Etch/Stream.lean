@@ -87,8 +87,8 @@ structure S (ι : Type _) (α : Type _) where
   σ     : Type
   -- next_weak/next_strict?
   -- upto/past ?
-  skip  : σ → E ι → P -- skip s i : if current index < i, must advance; may advance to first index ≥ i.
-  succ  : σ → E ι → P -- succ s i : if current index ≤ i, must advance; may advance to first index > i.
+  skip  : Name → σ → E ι → P -- skip _ s i : if current index < i, must advance; may advance to first index ≥ i.
+  succ  : Name → σ → E ι → P -- succ _ s i : if current index ≤ i, must advance; may advance to first index > i.
   value : σ → α
   ready : σ → E Bool
   index : σ → E ι
@@ -118,16 +118,24 @@ instance : Functor (S ι) where map := λ f s => {s with value := f ∘ s.value 
 
 variable [TaggedC ι]
 
-def simpleSkip (pos : Var ℕ) (max_pos : E ℕ) (tgt : E ι) :=
-  .store_var "temp" tgt;;
-  .while ((pos.expr << max_pos) * (is.access pos << "temp")) pos.incr
+def simpleSkip (n : Name) (pos : Var ℕ) (max_pos : E ℕ) (tgt : E ι) :=
+  let tmp : Var ι := ("temp" : Var _).fresh n
+  tmp.decl tgt;;
+  .while ((pos.expr << max_pos) * (is.access pos << tmp.expr)) $
+    pos.incr
 
-def searchSkip (pos : Var ℕ) (max_pos : E ℕ) (i : E ι) : P :=
-let hi : Var ℕ := "hi"; let lo : Var ℕ := "lo"; let m  : Var ℕ := "m";
-let tgt : Var ι := "temp"; let not_done : Var Bool := "not_done"
-tgt.store_var i;; .store_var lo pos;; .store_var hi max_pos;; .store_var not_done 1;;
+def searchSkip (n : Name) (pos : Var ℕ) (max_pos : E ℕ) (i : E ι) : P :=
+let hi  : Var ℕ := .fresh "hi"   n
+let lo  : Var ℕ := .fresh "lo"   n
+let m   : Var ℕ := .fresh "m"    n
+let tgt : Var ι := .fresh "temp" n
+let not_done : Var Bool := .fresh "not_done" n
+tgt.decl i;;
+lo.decl pos;;
+hi.decl max_pos;;
+not_done.decl 1;;
 (.while ((lo.expr <= hi.expr) * not_done) $
-  .store_var m (E.call .mid ![lo.expr, hi.expr]) ;;
+  m.decl (E.call .mid ![lo.expr, hi.expr]) ;;
   .branch (.access is m << tgt.expr)
     (.store_var lo (m + 1))
     (.branch (tgt.expr << .access is "m")
@@ -141,19 +149,19 @@ variable [LE ι] [TaggedC ι] [DecidableRel (LE.le : ι → ι → _)]
 
 def S.predRange [One α] (lower upper : E ι) : S ι α where
   σ := Var ι
-  value   _ := 1
-  succ  _ _ := .skip
-  ready   _ := 1
-  skip  pos := λ i => pos.store_var i
-  index pos := pos
-  valid pos := pos.expr << upper
-  init  n   := let p := .fresh "pos" n; (p.decl lower, p)
+  value     _ := 1
+  succ  _ _ _ := .skip
+  ready     _ := 1
+  skip  _ pos := pos.store_var
+  index   pos := pos
+  valid   pos := pos.expr << upper
+  init    n   := let p := .fresh "pos" n; (p.decl lower, p)
 
 def S.interval (h : IterMethod) (pos : Var ℕ) (lower upper : E ℕ) : S ι (E ℕ) where
   σ := Var ℕ
   value pos := pos.expr
-  succ  pos i := .if1 (.access is pos.expr <= i) pos.incr
-  skip  pos := (match h with | .step => simpleSkip | .search => searchSkip) is pos upper
+  succ  _ pos i := .if1 (.access is pos.expr <= i) pos.incr
+  skip  n pos := (match h with | .step => simpleSkip | .search => searchSkip) is n pos upper
   ready _   := 1
   index pos := .access is pos.expr
   valid pos := pos.expr << upper
@@ -164,21 +172,21 @@ def S.interval (h : IterMethod) (pos : Var ℕ) (lower upper : E ℕ) : S ι (E 
 --notation "⊥"  => Bot.bot
 def S.univ [Zero ι] [Add ι] [OfNat ι 1] [TaggedC ι] (max l : Var ι) : S ι (E ι) where
   value last := last.expr
-  succ  last i := .if1 (last.expr <= i) last.incr  -- imprecise but ok
+  succ  _ last i := .if1 (last.expr <= i) last.incr  -- imprecise but ok
   ready _    := 1
-  skip  last := λ i => .store_var last i
+  skip  _ last := last.store_var
   index last := last.expr
   valid last := last.expr << max.expr
   init  n    := let v := l.fresh n; (v.decl 0, v)
 
 def S.valFilter (f : α → E Bool) (s : ι →ₛ α) : ι →ₛ α :=
 { s with ready := λ p => s.ready p * f (s.value p),
-         skip := λ p i =>
+         skip := λ n p i =>
            .branch (s.ready p)
              (.branch (f (s.value p))
-               (s.skip p i)
-               (s.succ p i;; s.skip p i))
-             (s.skip p i) }
+               (s.skip (n.fresh 0) p i)
+               (s.succ (n.fresh 0) p i;; s.skip (n.fresh 1) p i))
+             (s.skip (n.fresh 0) p i) }
 
 def dim : Var ι := "dim"
 

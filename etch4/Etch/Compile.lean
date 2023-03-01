@@ -24,8 +24,8 @@ instance S.step [Compile L R] [TaggedC ι] : Compile (lvl ι L) (ι →ₛ R) wh
     init;; .while (r.valid s)
       (.decl temp (r.index s);;
        .branch (r.ready s)
-         (push;; compile n.freshen position (r.value s);; (r.succ s temp))
-         (r.skip s temp))
+         (push;; compile (n.fresh 0) position (r.value s);; (r.succ (n.fresh 1) s temp))
+         (r.skip n.freshen s temp))
 
 instance contract [Compile α β] : Compile α (Contraction β) where
   compile n := λ storage ⟨ι, _, v⟩ =>
@@ -34,8 +34,8 @@ instance contract [Compile α β] : Compile α (Contraction β) where
     init ;; .while (v.valid s)
       (.decl temp (v.index s);;
        .branch (v.ready s)
-        (Compile.compile n.freshen storage (v.value s);; v.succ s temp)
-        (v.skip s temp))
+        (Compile.compile (n.fresh 0) storage (v.value s);; v.succ (n.fresh 1) s temp)
+        (v.skip n.freshen s temp))
 
 -- Used only to generate callback for data loading
 instance [Compile α β] : Compile (lvl ι α) (E ι × β) where
