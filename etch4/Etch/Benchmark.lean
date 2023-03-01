@@ -256,21 +256,38 @@ def count_range := ∑ year, objid: range_06_08 * fires
 def E.succ {α} [Tagged α] [Add α] [OfNat α (nat_lit 1)] (e : E α) : E α :=
   E.call .add ![e, (1 : E α)]
 
+namespace String
+
+instance instLEString : LE String := ⟨fun s₁ s₂ ↦ s₁ < s₂ || s₁ = s₂⟩
+
+instance decLe : @DecidableRel String (· ≤ ·)
+  | s₁, s₂ => if h₁ : s₁ < s₂ then isTrue (by simp [instLEString, h₁])
+              else if h₂ : s₁ = s₂ then isTrue (by simp [instLEString, h₂])
+              else isFalse (by simp [instLEString, h₁, h₂])
+
+instance zero : Zero String := ⟨""⟩
+
+instance max : Max String := ⟨fun s₁ s₂ ↦ if s₁ < s₂ then s₂ else s₁⟩
+
+end String
+
 namespace TPCH
 
-abbrev orderkey  := (0, ℕ)
-abbrev custkey   := (1, ℕ)
-abbrev suppkey   := (2, ℕ)
-abbrev nationkey := (3, ℕ)
-abbrev regionkey := (4, ℕ)
+abbrev orderkey   := (0, ℕ)
+abbrev custkey    := (1, ℕ)
+abbrev suppkey    := (2, ℕ)
+abbrev nationkey  := (3, ℕ)
+abbrev regionkey  := (4, ℕ)
+abbrev regionname := (5, String)
 
-def S.always0 {f} [Functor f] [Zero (E α)] : f (E ℕ) → f (E α) := Functor.map (λ _ => 0)
-def S.always1 {f} [Functor f] [One (E α)] : f (E ℕ) → f (E α) := Functor.map (λ _ => 1)
+def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.map (λ _ => 0)
+def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.map (λ _ => 1)
 
 def ssMat (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .search 0 & S.level .step (csr.of f 2) ⊚ S.leaf (f ++ "_vals")
 def tbl1 (f : String) : ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.always1
 def ssTbl2 (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.level .step (csr.of f 2) ⊚ S.always1
 def dsTbl2 (f : String) : ℕ →ₐ ℕ →ₛ E R := range & S.level .step (csr.of f 2) ⊚ S.always1
+def dsTbl2_str (f : String) : ℕ →ₐ String →ₛ E R := range & S.level .step (csr.of f 2 String) ⊚ S.always1
 
 def ssTbl2_skip (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.level .search (csr.of f 2) ⊚ S.always1
 
@@ -279,14 +296,12 @@ def customer : custkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_customer"
 def lineitem : orderkey  ↠ suppkey   ↠ E R := ssMat "tpch_lineitem"  -- R = l_extendedprice * (1 - l_discount)
 def supplier : suppkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_supplier"
 def nation   : nationkey ↠ regionkey ↠ E R := dsTbl2 "tpch_nation"
+def region   : regionkey ↠ regionname ↠ E R := dsTbl2_str "tpch_region"
 
-def us_const : E ℕ := .var (.mk "US")
-def us : nationkey ↠ E R := (S.predRange us_const us_const.succ : ℕ →ₛ E R)
+def asia_const : E String := .var (.mk "\"ASIA\"")
+def asia : regionname ↠ E R := (S.predRangeIncl asia_const asia_const : String →ₛ E R)
 
-def asia_const : E ℕ := .var (.mk "ASIA")
-def asia : regionkey ↠ E R := (S.predRange asia_const asia_const.succ : ℕ →ₛ E R)
-
-def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey: lineitem * asia * orders * customer * supplier * nation
+def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey, regionname: lineitem * asia * orders * customer * supplier * nation * region
 #check q5
 
 end TPCH

@@ -7,7 +7,7 @@ end C
 
 open C
 
-def emitString [ToString α] (a : α) : M Unit := modify λ s => s ++ toString a
+def emitString [ToString α] (a : α) : M Unit := modify (· ++ toString a)
 
 namespace String
 def emit (a : String) : M Unit := _root_.modify $ λ s => s ++ a

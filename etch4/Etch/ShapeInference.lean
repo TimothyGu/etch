@@ -140,7 +140,7 @@ variable [TaggedC ι]
 -- TODO: this doesn't work for strings
 variable [Add ι] [OfNat ι 1]
 
-def Str.to_g {n} : (n × ι ⟶ α) → (ι →ₛ α) := λ s => match s with
+def Str.to_g {n} : (n × ι ⟶ α) → (ι →ₛ α)
 | .fun f => f <$> S.univ "dim" "u_" -- ??
 | .str a => a
 
@@ -161,6 +161,7 @@ notation:35 "∑" i:34 "," j:34 ":" v:34 => SumIndex.sum i.1 (SumIndex.sum j.1 v
 notation:35 "∑" i:34 "," j:34 "," k:34 ":" v:34 => SumIndex.sum i.1 (SumIndex.sum j.1 (SumIndex.sum k.1 v))
 notation:35 "∑" i:34 "," j:34 "," k:34 "," l:34 ":" v:34 => SumIndex.sum i.1 (SumIndex.sum j.1 (SumIndex.sum k.1 (SumIndex.sum l.1 v)))
 notation:35 "∑" i:34 "," j:34 "," k:34 "," l:34 "," m:34 ":" v:34 => SumIndex.sum i.1 (SumIndex.sum j.1 (SumIndex.sum k.1 (SumIndex.sum l.1 (SumIndex.sum m.1 v))))
+notation:35 "∑" i:34 "," j:34 "," k:34 "," l:34 "," m:34 "," n:34 ":" v:34 => SumIndex.sum i.1 (SumIndex.sum j.1 (SumIndex.sum k.1 (SumIndex.sum l.1 (SumIndex.sum m.1 (SumIndex.sum n.1 v)))))
 --macro "∑" i:term ws j:term "," v:term : term => `(SumIndex.sum $i.1 (SumIndex.sum $j.1 $v))
 --macro "∑" i:term "," v:term : term => `(SumIndex.sum $i.1 $v)
 --macro "∑" i:term+ "," v:term : term => `(SumIndex.sum $(i[0]!).1 $v)

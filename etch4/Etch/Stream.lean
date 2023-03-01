@@ -147,6 +147,7 @@ inductive IterMethod | step | search
 
 variable [LE ι] [TaggedC ι] [DecidableRel (LE.le : ι → ι → _)]
 
+-- [lower, upper)
 def S.predRange [One α] (lower upper : E ι) : S ι α where
   σ := Var ι
   value     _ := 1
@@ -156,6 +157,17 @@ def S.predRange [One α] (lower upper : E ι) : S ι α where
   index   pos := pos
   valid   pos := pos.expr << upper
   init    n   := let p := .fresh "pos" n; (p.decl lower, p)
+
+-- [lower, upper]
+def S.predRangeIncl [One α] (lower upper : E ι) : S ι α where
+  σ := Var ι
+  value     _ := 1
+  succ  _ _ _ := .skip
+  ready     _ := 1
+  skip  _ pos := pos.store_var
+  index   pos := pos
+  valid   pos := pos.expr <= upper
+  init  n     := let p := .fresh "pos" n; (p.decl lower, p)
 
 def S.interval (h : IterMethod) (pos : Var ℕ) (lower upper : E ℕ) : S ι (E ℕ) where
   σ := Var ℕ
