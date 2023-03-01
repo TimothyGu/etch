@@ -144,6 +144,10 @@ def Str.to_g {n} : (n × ι ⟶ α) → (ι →ₛ α)
 | .fun f => f <$> S.univ "dim" "u_" -- ??
 | .str a => a
 
+def Str.to_g_str {n} : (n × String ⟶ α) → (String →ₛ α)
+| .fun f => absurd trivial (by sorry)
+| .str a => a
+
 instance [of_stream α β] : of_stream (n × ι ⟶ α) (ι →ₛ β) := ⟨
 λ | .fun f => (of_stream.coe ∘ f) <$> S.univ dim "no"
   | .str a => of_stream.coe <$> a
@@ -153,6 +157,7 @@ def Stream.of [of_stream α β] : α → β := of_stream.coe
 
 class SumIndex (n : ℕ) (α : Type _) (β : outParam $ Type _) := (sum : α → β)
 instance sum_eq (n : ℕ) : SumIndex n (n × ι ⟶ α) (Contraction α) := ⟨S.contract ∘ Str.to_g⟩
+instance sum_eq_str (n : ℕ) : SumIndex n (n × String ⟶ α) (Contraction α) := ⟨S.contract ∘ Str.to_g_str⟩
 example : Inhabited $ E R := inferInstance
 instance sum_lt (m n : ℕ) [NatLt n m] [SumIndex m α β] : SumIndex m (n × ι ⟶ α) (n × ι ⟶ β) := ⟨Functor.map $ SumIndex.sum m⟩
 
