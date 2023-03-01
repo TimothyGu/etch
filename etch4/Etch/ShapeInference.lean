@@ -135,7 +135,9 @@ instance [Coe α β] : Coe (ι →ₐ α) (n × ι ⟶ β) := ⟨.fun ∘ Functo
 class of_stream (α β : Type _) := (coe : α → β)
 instance base.of_stream : of_stream α α := ⟨id⟩
 
--- TODO!
+variable [TaggedC ι]
+
+-- TODO: this doesn't work for strings
 variable [Add ι] [OfNat ι 1]
 
 def Str.to_g {n} : (n × ι ⟶ α) → (ι →ₛ α) := λ s => match s with

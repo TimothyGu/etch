@@ -6,6 +6,12 @@ import Etch.Mul
 import Etch.Compile
 import Etch.ShapeInference
 
+/-
+Tags:
+ For type T to be usable as an index type, it needs to be Tagged and TaggedC.
+ For type T to be usable as a value type, it needs to be Tagged and a semiring.
+-/
+
 /- TODO:
 
 https://docs.google.com/document/d/1kQFwU0STbcasz0ZPLxK6S4F-RDIvZLUuAg6UF6ga_TI/edit#heading=h.y6ikm63g5ns
@@ -144,9 +150,9 @@ def outVar : Var R := "fout"
 def outVal : Var R := "val"
 def outVal_min : Var RMin := "val"
 def outVal_max : Var RMax := "val"
-def sum1 : S ι α → Contraction α := S.contract
-def sum2 : S ι (S ι' α) → Contraction (Contraction α) := S.contract ⊚ sum1
-def sum3 : S ι (S ι' (S ι'' α)) → Contraction (Contraction (Contraction α)) := S.contract ⊚ sum2
+def sum1 [TaggedC ι] : S ι α → Contraction α := S.contract
+def sum2 [TaggedC ι] [TaggedC ι'] : S ι (S ι' α) → Contraction (Contraction α) := S.contract ⊚ sum1
+def sum3 [TaggedC ι] [TaggedC ι'] [TaggedC ι''] : S ι (S ι' (S ι'' α)) → Contraction (Contraction (Contraction α)) := S.contract ⊚ sum2
 def exp0 (ι : Type _) : α → ι →ₐ α := λ (v : α) => λ _ => v
 def exp1 (ι'' : Type _) : (ι' →ₛ α) → (ι' →ₛ (ι'' →ₐ α)) := Functor.map $ exp0 ι''
 def exp2 (ι'' : Type _) : S ι (S ι' α) → S ι (S ι' (Fun ι'' α)) := Functor.map $ exp1 ι''
@@ -159,8 +165,8 @@ def S.attr (i : ℕ × Type _) : i ↠ (E i.2) := Str.fun id
 
 section funs
 variable
-{ι : Type} [Tagged ι] [DecidableEq ι] [LE ι] [DecidableRel (LE.le : ι → ι → _)] [LT ι] [DecidableRel (LT.lt : ι → ι → _)] [OfNat ι 0] [OfNat ι 1] [Add ι]
-{ι' : Type} [Tagged ι'] [DecidableEq ι'] [LE ι'] [DecidableRel (LE.le : ι' → ι' → _)] [LT ι'] [DecidableRel (LT.lt : ι' → ι' → _)] [OfNat ι' 0] [OfNat ι' 1] [Add ι']
+{ι : Type} [Tagged ι] [TaggedC ι] [DecidableEq ι] [LE ι] [DecidableRel (LE.le : ι → ι → _)] [LT ι] [DecidableRel (LT.lt : ι → ι → _)] [OfNat ι 0] [OfNat ι 1] [Add ι]
+{ι' : Type} [Tagged ι'] [TaggedC ι'] [DecidableEq ι'] [LE ι'] [DecidableRel (LE.le : ι' → ι' → _)] [LT ι'] [DecidableRel (LT.lt : ι' → ι' → _)] [OfNat ι' 0] [OfNat ι' 1] [Add ι']
 
 def toGuard {α β} [OfNat β (nat_lit 1)] : α → β := λ _ => 1
 def binOp (f : E ι → E ι' → E α) : ι →ₛ ι' →ₛ E α := S.function "f1_" ⊚ S.function "f2_" $ f

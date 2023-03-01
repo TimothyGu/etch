@@ -16,7 +16,7 @@ instance base_var [Tagged α] [Add α] : Compile (Var α) (E α) where
 instance base_mem [Tagged α] [Add α] : Compile (MemLoc α) (E α) where
   compile _ l v := .store_mem l.arr l.ind (l.access + v)
 
-instance S.step [Compile L R] : Compile (lvl ι L) (ι →ₛ R) where
+instance S.step [Compile L R] [TaggedC ι] : Compile (lvl ι L) (ι →ₛ R) where
   compile n l r :=
     let (init, s) := r.init emptyName
     let (push, position) := l.push (r.index s)
@@ -28,7 +28,7 @@ instance S.step [Compile L R] : Compile (lvl ι L) (ι →ₛ R) where
          (r.skip s temp))
 
 instance contract [Compile α β] : Compile α (Contraction β) where
-  compile n := λ storage ⟨ι, v⟩ =>
+  compile n := λ storage ⟨ι, _, v⟩ =>
     let (init, s) := v.init emptyName
     let temp := ("index_lower_bound" : Var ι).fresh n
     init ;; .while (v.valid s)

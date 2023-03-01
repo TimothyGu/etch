@@ -58,7 +58,7 @@ inductive P
 | while  : E Bool → P → P
 | branch : E Bool → P → P → P
 | skip   : P
-| decl   : Var α → E α → P
+| decl   [TaggedC α] : Var α → E α → P
 | store_var : Var α → E α → P
 | store_mem : Var (ℕ → α) → E ℕ → E α → P
 
@@ -73,7 +73,7 @@ def P.compile : P → Stmt
 | .while cond body => Stmt.while cond.compile body.compile
 | branch c a b => Stmt.conde c.compile a.compile b.compile
 | skip => Stmt.noop
-| decl var e => Stmt.decl .Int var.toString e.compile
+| @decl _ taggedC var e => Stmt.decl taggedC.tag var.toString e.compile
 | store_var var e => Stmt.store (Expr.var var.toString) e.compile
 | store_mem v l r => Stmt.store (Expr.index (Expr.var v.toString) [l.compile]) r.compile
 
@@ -110,11 +110,13 @@ def Var.incr_array [Tagged α] [Add α] [OfNat α 1] (ind : E ℕ) : P := .store
 def Var.expr (v : Var α) : E α := E.var v
 def Var.fresh (v : Var α) (n : Name) : Var α := Var.mk (v.toString ++ n.toString)
 def Var.store_var (v : Var α) := P.store_var v
-def Var.decl (v : Var α) := P.decl v
+def Var.decl [TaggedC α] (v : Var α) := P.decl v
 
 instance : Coe (Var α) (E α) := ⟨E.var⟩
 
 instance : Functor (S ι) where map := λ f s => {s with value := f ∘ s.value }
+
+variable [TaggedC ι]
 
 def simpleSkip (pos : Var ℕ) (max_pos : E ℕ) (tgt : E ι) :=
   .store_var "temp" tgt;;
@@ -135,7 +137,7 @@ tgt.store_var i;; .store_var lo pos;; .store_var hi max_pos;; .store_var not_don
 
 inductive IterMethod | step | search
 
-variable [LE ι] [DecidableRel (LE.le : ι → ι → _)]
+variable [LE ι] [TaggedC ι] [DecidableRel (LE.le : ι → ι → _)]
 
 def S.predRange [One α] (lower upper : E ι) : S ι α where
   σ := Var ι
@@ -160,7 +162,7 @@ def S.interval (h : IterMethod) (pos : Var ℕ) (lower upper : E ℕ) : S ι (E 
 -- todo: use instead of zero
 --class Bot (α : Type _) := (bot : α)
 --notation "⊥"  => Bot.bot
-def S.univ [Zero ι] [Add ι] [OfNat ι 1] (max l : Var ι) : S ι (E ι) where
+def S.univ [Zero ι] [Add ι] [OfNat ι 1] [TaggedC ι] (max l : Var ι) : S ι (E ι) where
   value last := last.expr
   succ  last i := .if1 (last.expr <= i) last.incr  -- imprecise but ok
   ready _    := 1
@@ -196,15 +198,15 @@ def csr.level (h : IterMethod) (vars : csr ι ℕ) (loc : E ℕ) : ι →ₛ (E 
 def S.level {f} [Functor f] (h : IterMethod) : csr ι ℕ → f (E ℕ) → f (ι →ₛ (E ℕ)) := Functor.map ∘ csr.level h
 def S.leaf  {f} [Functor f] : Var (ℕ → α) → f (E ℕ) → f (E α) := Functor.map ∘ E.access
 --def S.leaf' : Var α → E ℕ → E α := E.access
-def Contraction (α : Type _) := (ι : Type) × S ι α
+def Contraction (α : Type _) := (ι : Type) × TaggedC ι × S ι α
 --structure Contraction (α : Type _) where
 --  f : Type _ → Type _
 --  h : Functor f
 --  v  : f α
 --def Contraction {f : Type → Type _ → Type _} (α : Type _) := (ι : Type) × f ι α
 --instance : Functor Contraction where map := λ f ⟨F, h, v⟩ => ⟨F, h, f <$> v⟩
-instance : Functor Contraction where map := λ f ⟨ι, v⟩ => ⟨ι, f <$> v⟩
-def S.contract (s : S ι α) : Contraction α := ⟨_, s⟩
+instance : Functor Contraction where map := λ f ⟨ι, tᵢ, v⟩ => ⟨ι, tᵢ, f <$> v⟩
+def S.contract [inst : TaggedC ι] (s : S ι α) : Contraction α := ⟨_, inst, s⟩
 
 end ι
 

@@ -1,6 +1,6 @@
 import Etch.Stream
 
-variable {ι : Type} {α : Type _} [Tagged ι] [DecidableEq ι]
+variable {ι : Type} {α : Type _} [Tagged ι] [TaggedC ι] [DecidableEq ι]
   [LT ι] [LE ι] [DecidableRel (LT.lt : ι → ι → Prop)]
   [DecidableRel (LE.le : ι → ι → _)]
 
@@ -27,7 +27,7 @@ infixr:40 "≤ₛ" => S_le
 def Prod.symm (f : α × β) := (f.2, f.1)
 
 -- Local temporary variables for `add`
-structure AddTmp (ι : Type) where
+structure AddTmp (ι : Type) [TaggedC ι] where
 (cv₁ : Var Bool)
 (cv₂ : Var Bool)
 (ci : Var ι)
