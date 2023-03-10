@@ -45,7 +45,7 @@ void time(F f, char const* tag, int reps) {
     auto rep_start = std::chrono::high_resolution_clock::now();
     auto val = f();
     auto rep_end = std::chrono::high_resolution_clock::now();
-    std::cout << tag << " val: " << val << std::endl;
+    std::cout << tag << " val: " << std::fixed << val << std::endl;
     std::cout << tag << " took: " << as_fsec(rep_end-rep_start) << std::endl;
     total_dur += rep_end - rep_start;
   }

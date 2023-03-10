@@ -16,7 +16,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -34,7 +36,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -52,7 +56,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -70,7 +76,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -88,7 +96,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');
 
 EXPLAIN QUERY PLAN
 select
@@ -107,4 +117,6 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and unixepoch(o_orderdate, 'utc') >= unixepoch('1994-01-01', 'utc')
+  and unixepoch(o_orderdate, 'utc') < unixepoch('1995-01-01', 'utc');

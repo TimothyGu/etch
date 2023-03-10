@@ -274,11 +274,12 @@ end String
 namespace TPCHq5
 
 abbrev orderkey   := (0, ℕ)
-abbrev custkey    := (1, ℕ)
-abbrev suppkey    := (2, ℕ)
-abbrev nationkey  := (3, ℕ)
-abbrev regionkey  := (4, ℕ)
-abbrev regionname := (5, String)
+abbrev orderdate  := (1, ℕ)
+abbrev custkey    := (2, ℕ)
+abbrev suppkey    := (3, ℕ)
+abbrev nationkey  := (4, ℕ)
+abbrev regionkey  := (5, ℕ)
+abbrev regionname := (6, String)
 
 def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 0)
 def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 1)
@@ -289,22 +290,34 @@ def ssMat (f : String) (col := "vals") : ℕ →ₛ ℕ →ₛ E R := ss f (E.ac
 def ssMat2 (f : String) (col1 col2 : String) : ℕ →ₛ ℕ →ₛ (E R × E R) := ss f fun i => (E.access (f ++ "_" ++ col1) i, E.access (f ++ "_" ++ col2) i)
 
 def tbl1 (f : String) : ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.always1
-def dsTbl2 (f : String) : ℕ →ₐ ℕ →ₛ E R := range & S.level .step (csr.of f 2) ⊚ S.always1
-def dsTbl2_str (f : String) : ℕ →ₐ String →ₛ E R := range & S.level .step (csr.of f 2 String) ⊚ S.always1
+def dsTbl2 (f : String) : ℕ →ₐ ℕ →ₛ E R := range |> S.level .step (csr.of f 2) ⊚ S.always1
+def dsTbl2_str (f : String) : ℕ →ₐ String →ₛ E R := range |> S.level .step (csr.of f 2 String) ⊚ S.always1
+def dssTbl3 (f : String) : ℕ →ₐ ℕ →ₛ ℕ →ₛ E R := range |> S.level .search (csr.of f 2) ⊚ S.level .step (csr.of f 3) ⊚ S.always1
 
 def lineitem : orderkey ↠ suppkey ↠ (E R × E R) := ssMat2 "tpch_lineitem" "extendedprice" "discount"
-def lineitem_revenue : orderkey ↠ suppkey ↠ E R := lineitem |> Functor.map (Functor.map fun (p, d) => p * (1 - d))
-def orders   : orderkey  ↠ custkey   ↠ E R := dsTbl2 "tpch_orders"
+def lineitem_revenue : orderkey ↠ suppkey ↠ E R := ((fun (p, d) => p * (1 - d)) <$> ·) <$> lineitem
+def orders   : orderkey  ↠ orderdate ↠ custkey ↠ E R := dssTbl3 "tpch_orders"
 def customer : custkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_customer"
 def supplier : suppkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_supplier"
 def nation   : nationkey ↠ regionkey ↠ E R := dsTbl2 "tpch_nation"
 def region   : regionkey ↠ regionname ↠ E R := dsTbl2_str "tpch_region"
 
-def asia_const : E String := .strLit "ASIA"
+def asia_const := E.strLit "ASIA"
 def asia : regionname ↠ E R := (S.predRangeIncl asia_const asia_const : String →ₛ E R)
 
-def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey, regionname: lineitem_revenue * asia * orders * customer * supplier * nation * region
-#check q5
+def year1994unix := E.intLit 757411200
+def year1995unix := E.intLit 788947200
+def orders1994 : orderdate ↠ E R := (S.predRange year1994unix year1995unix : ℕ →ₛ E R)
+
+-- break things up to help type checker out
+def tmp1 := lineitem_revenue * orders * orders1994
+def tmp2 := tmp1 * customer * supplier
+def tmp3 := nation * region * asia
+def tmp4 := tmp2 * tmp3
+#check tmp4
+def q5 := ∑ orderkey, orderdate, custkey, suppkey, nationkey, regionkey: ∑ regionname: tmp4
+
+--  lineitem_revenue * asia * orders * customer * supplier * nation * region
 
 end TPCHq5
 /- end examples -/

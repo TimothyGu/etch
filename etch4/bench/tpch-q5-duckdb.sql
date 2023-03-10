@@ -21,12 +21,13 @@ CREATE TABLE CUSTOMER ( C_CUSTKEY     INTEGER NOT NULL,
                              PRIMARY KEY (C_CUSTKEY));
 CREATE TABLE ORDERS  ( O_ORDERKEY       INTEGER NOT NULL,
                            O_CUSTKEY        INTEGER NOT NULL REFERENCES CUSTOMER (C_CUSTKEY),
+                           O_ORDERDATE      DATE NOT NULL,
                            PRIMARY KEY (O_ORDERKEY));
 CREATE TABLE LINEITEM ( L_ORDERKEY    INTEGER NOT NULL,
                              L_SUPPKEY     INTEGER NOT NULL REFERENCES SUPPLIER (S_SUPPKEY),
                              L_LINENUMBER  INTEGER NOT NULL,
-                             L_EXTENDEDPRICE  DECIMAL(15,2) NOT NULL,
-                             L_DISCOUNT    DECIMAL(15,2) NOT NULL,
+                             L_EXTENDEDPRICE  DOUBLE NOT NULL, -- actually DECIMAL(15,2), but etch uses double
+                             L_DISCOUNT    DOUBLE NOT NULL,
                              PRIMARY KEY (L_ORDERKEY, L_LINENUMBER));
 
 INSERT INTO REGION
@@ -42,7 +43,7 @@ INSERT INTO CUSTOMER
 SELECT C_CUSTKEY, C_NATIONKEY FROM sqlite_scan('TPC-H.db', 'CUSTOMER');
 
 INSERT INTO ORDERS
-SELECT O_ORDERKEY, O_CUSTKEY FROM sqlite_scan('TPC-H.db', 'ORDERS');
+SELECT O_ORDERKEY, O_CUSTKEY, O_ORDERDATE FROM sqlite_scan('TPC-H.db', 'ORDERS');
 
 INSERT INTO LINEITEM
 SELECT L_ORDERKEY, L_SUPPKEY, L_LINENUMBER, L_EXTENDEDPRICE, L_DISCOUNT FROM sqlite_scan('TPC-H.db', 'LINEITEM');
@@ -70,7 +71,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -88,7 +91,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -106,7 +111,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -124,7 +131,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 select
  sum(l_extendedprice * (1 - l_discount)) as revenue
@@ -142,7 +151,9 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 EXPLAIN ANALYZE
 select
@@ -161,6 +172,8 @@ where
   and c_nationkey = s_nationkey
   and s_nationkey = n_nationkey
   and n_regionkey = r_regionkey
-  and r_name = 'ASIA';
+  and r_name = 'ASIA'
+  and o_orderdate >= date '1994-01-01'
+  and o_orderdate < date '1995-01-01';
 
 PRAGMA database_size;
