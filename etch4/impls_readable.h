@@ -32,6 +32,18 @@
 #define nat_succ(a) (a + 1)
 #define nat_neg(a) (!a)
 
+#define int_add(a, b) (a + b)
+#define int_sub(a, b) (a - b)
+#define int_mul(a, b) (a * b)
+#define int_one() 1
+#define int_zero() 0
+#define int_lt(a, b) (a < b)
+#define int_le(a, b) (a <= b)
+#define int_eq(a, b) (a == b)
+#define int_max(a, b) max(a, b)
+#define int_min(a, b) min(a, b)
+#define int_succ(a) (a + 1)
+
 #define bool_add(a, b) (a || b)
 #define bool_mul(a, b) (a && b)
 #define bool_one() true

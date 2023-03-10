@@ -17,6 +17,7 @@ inductive E : Type → Type 1
 | var    : (v : Var α) → E α
 | access : Var (ℕ → α) → E ℕ → E α
 | intLit : ℕ → E ℕ
+| strLit : String → E String
 
 def E.v (α) (v : String) : E α := E.var v
 
@@ -29,6 +30,7 @@ def E.eval (c : HeapContext) : E α → α
 | var v => c.store v
 | access arr arg => c.heap arr (arg.eval c)
 | intLit x => x
+| strLit x => x
 
 instance : OfNat Bool (nat_lit 0) := ⟨ false ⟩
 instance : OfNat Bool (nat_lit 1) := ⟨ .true ⟩
@@ -38,6 +40,8 @@ instance [Tagged α] [Mul α] : Mul (E α) := ⟨ λ a b => E.call .mul ![a, b] 
 instance [Tagged α] [OfNat α (nat_lit 0)] : OfNat (E α) (nat_lit 0) := ⟨ E.call .zero ![] ⟩
 instance [Tagged α] [OfNat α (nat_lit 1)] : OfNat (E α) (nat_lit 1) := ⟨ E.call .one ![] ⟩
 instance : OfNat (E ℕ) n := ⟨ .intLit n ⟩
+instance : Coe ℕ (E ℕ) := ⟨ .intLit ⟩
+instance : Coe String (E String) := ⟨ .strLit ⟩
 instance : Inhabited (E R) := ⟨ 0 ⟩
 --def E.ext (f : String) : E Unit := E.call (O.voidCall f) ![]
 
@@ -46,12 +50,19 @@ def E.compile : E α → Expr
 | access base i => Expr.index (Expr.var base.toString) [i.compile]
 | var v => Expr.var v.toString
 | intLit x => Expr.lit x
+| strLit x => Expr.lits x
 
 infixr:40 " << " => λ a b => E.call Op.lt ![a, b]
+infixr:40 " >> " => λ a b => E.call Op.lt ![b, a]
 infixr:40 " <ᵣ " => λ a b => E.call Op.ofBool ![E.call Op.lt ![a, b]]
+infixr:40 " >ᵣ " => λ a b => E.call Op.ofBool ![E.call Op.lt ![b, a]]
 infixr:40 " == " => λ a b => E.call Op.eq ![a, b]
 infixr:40 " != " => λ a b => E.call Op.neg ![(E.call Op.eq ![a, b])]
 infixr:40 " <= " => λ a b => E.call Op.le ![a, b]
+infixr:40 " >= " => λ a b => E.call Op.le ![b, a]
+
+def E.findStr (s f : E String) : E Int := E.call Op.findStr ![s, f]
+def E.isSubstrOf (f s : E String) : E Bool := s.findStr f >= (0 : E ℤ)
 
 inductive P
 | seq    : P → P → P
@@ -167,6 +178,16 @@ def S.predRangeIncl [One α] (lower upper : E ι) : S ι α where
   skip  _ pos := pos.store_var
   index   pos := pos
   valid   pos := pos.expr <= upper
+  init  n     := let p := .fresh "pos" n; (p.decl lower, p)
+
+def S.predicate [One α] (lower : E ι) (pred : Var ι → E Bool) : S ι α where
+  σ := Var ι
+  value     _ := 1
+  succ  _ _ _ := .skip
+  ready       := pred
+  skip  _ pos := pos.store_var
+  index   pos := pos
+  valid     _ := 1
   init  n     := let p := .fresh "pos" n; (p.decl lower, p)
 
 def S.interval (h : IterMethod) (pos : Var ℕ) (lower upper : E ℕ) : S ι (E ℕ) where

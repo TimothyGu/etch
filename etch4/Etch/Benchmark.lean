@@ -298,7 +298,7 @@ def supplier : suppkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_supplier"
 def nation   : nationkey ↠ regionkey ↠ E R := dsTbl2 "tpch_nation"
 def region   : regionkey ↠ regionname ↠ E R := dsTbl2_str "tpch_region"
 
-def asia_const : E String := .var (.mk "\"ASIA\"")
+def asia_const : E String := .strLit "ASIA"
 def asia : regionname ↠ E R := (S.predRangeIncl asia_const asia_const : String →ₛ E R)
 
 def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey, regionname: lineitem * asia * orders * customer * supplier * nation * region

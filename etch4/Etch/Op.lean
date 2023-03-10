@@ -16,6 +16,7 @@ def RMax.ofR : R → RMax := id
 
 instance : Tagged Unit := ⟨ "macro" ⟩ -- default type for actual monotypic function
 instance : Tagged ℕ := ⟨ "nat" ⟩
+instance : Tagged Int := ⟨ "int" ⟩
 instance : Tagged String := ⟨ "str" ⟩
 instance : Tagged Bool := ⟨ "bool" ⟩
 instance : Tagged R := ⟨ "num" ⟩
@@ -166,3 +167,27 @@ def Op.access {ι α : Type} : Op α :=
 { argTypes := ![ι → α, ι],
   spec := λ x  => (x 0) (x 1),
   opName := "arr_access" }
+
+-- simple O(mn) algorithm
+partial def String.findStr? (s f : String) : Option String.Pos :=
+  loop 0
+where
+  loop (off : String.Pos) :=
+    if s.substrEq off f 0 f.length then
+      some off
+    else if off + f.endPos < s.endPos then
+      loop (s.next off)
+    else
+      none
+
+-- `![a, b]` means find `b` within `a`
+-- if found, ≥0 is byte index; if not found, -1
+def Op.findStr : Op Int where
+  argTypes := ![String, String]
+  spec := fun x => match (x 0).findStr? (x 1) with
+                   | some off => off.byteIdx
+                   | none     => -1
+  opName := "str_find"
+
+  -- We will implement this using C's strstr(), which is not exactly
+  -- the same thing since it's not UTF-8 aware, but close enough.

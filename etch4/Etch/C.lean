@@ -25,6 +25,7 @@ def emitLines [ToString α] (a : Array α) : Op :=
 inductive Expr
 | lit (n : Int)
 | litf (f : Float)
+| lits (s : String)
 | var (v : Var)
 | index (base : Expr) (indices : List Expr)
 | star (addr : Expr)
@@ -79,6 +80,7 @@ def wrap (s : String) : String := String.wrap s
 partial def toString : Expr → String
   | lit n => ToString.toString n
   | litf n => ToString.toString n
+  | lits s => "\"" ++ s ++ "\"" -- TODO: escape
   | var v => v
   | index n indices => toString n ++ (indices.map λ i => "[" ++ toString i ++ "]").foldl String.append ""
   | star addr => "*" ++ addr.toString

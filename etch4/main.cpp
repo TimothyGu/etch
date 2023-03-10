@@ -101,7 +101,22 @@ static inline bool   nat_neg(int a) { return !a; }
 static inline int    nat_mid(int a, int b) { return (a + b) / 2; }
 static inline int    nat_one() { return 1; }
 static inline int    nat_zero() { return 0; }
-static inline double nat_ofBool(bool x) { return x; }
+static inline int    nat_ofBool(bool x) { return x; }
+
+static inline int    int_add(int a, int b) { return a + b; }
+static inline int    int_mul(int a, int b) { return a * b; }
+static inline int    int_sub(int a, int b) { return a - b; }
+static inline bool   int_lt(int a, int b) { return a < b; }
+static inline bool   int_le(int a, int b) { return a <= b; }
+static inline bool   int_eq(int a, int b) { return a == b; }
+static inline int    int_max(int a, int b) { return a < b ? b : a; }
+static inline int    int_min(int a, int b) { return a < b ? a : b; }
+static inline int    int_succ(int a) { return a + 1; }
+static inline bool   int_neg(int a) { return !a; }
+static inline int    int_mid(int a, int b) { return (a + b) / 2; }
+static inline int    int_one() { return 1; }
+static inline int    int_zero() { return 0; }
+static inline int    int_ofBool(bool x) { return x; }
 
 static inline bool    bool_add(bool a, bool b) { return a || b; }
 //#define bool_add(a, b) (a || b)
@@ -113,6 +128,11 @@ static inline bool    bool_neg(bool x) { return !x; }
 
 static inline bool   str_lt(const char* a, const char* b) { return strcmp(a, b) < 0; }
 static inline bool   str_le(const char* a, const char* b) { return strcmp(a, b) <= 0; }
+static inline int    str_find(const char* haystack, const char* needle) {
+  const char* res = strstr(haystack, needle);
+  if (!res) return -1;
+  return res - haystack;
+}
 static inline const char* str_max(const char* a, const char* b) { return str_lt(a, b) ? b : a; }
 static inline const char* str_min(const char* a, const char* b) { return str_lt(a, b) ? a : b; }
 static inline bool   str_eq(const char* a, const char* b) { return strcmp(a, b) == 0; }
