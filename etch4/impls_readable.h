@@ -4,6 +4,7 @@
 #endif
 
 #define num_add(a, b) (a + b)
+#define num_sub(a, b) (a - b)
 #define num_mul(a, b) (a * b)
 #define num_one() 1
 #define num_zero() 0

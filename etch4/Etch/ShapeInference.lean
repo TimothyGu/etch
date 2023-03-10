@@ -127,8 +127,8 @@ variable
 
 --#check f * f #check a * b example [HMul α α α] : Mul α := inferInstance example : Mul (i ↠ j ↠ E R) := inferInstance
 
-instance : Coe (ι →ₛ E α) (n × ι ⟶ E α) := ⟨.str⟩
-instance : Coe (ι →ₐ E α) (n × ι ⟶ E α) := ⟨.fun⟩
+instance : Coe (ι →ₛ α) (n × ι ⟶ α) := ⟨.str⟩
+instance : Coe (ι →ₐ α) (n × ι ⟶ α) := ⟨.fun⟩
 instance [Coe α β] : Coe (ι →ₛ α) (n × ι ⟶ β) := ⟨.str ∘ Functor.map Coe.coe⟩
 instance [Coe α β] : Coe (ι →ₐ α) (n × ι ⟶ β) := ⟨.fun ∘ Functor.map Coe.coe⟩
 

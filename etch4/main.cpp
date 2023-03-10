@@ -63,10 +63,9 @@ static void sqlite_udf(sqlite3_context *context, int argc, sqlite3_value **argv)
 //static inline double    nat_udf(int a, int b) {  /*printf("|%d,%d:%f|", a, b, sqrt(abs(a+b)));*/ return sqrt(abs(a + b)); }
 static inline double    nat_udf_max(int a, int b) { return sqrt(abs(a - b)); }
 
-static inline double    num_add(double a, double b) {  return a + b; }
-//#define num_add(a, b) (a + b)
+static inline double    num_add(double a, double b) { return a + b; }
+static inline double    num_sub(double a, double b) { return a - b; }
 static inline double    num_mul(double a, double b) { return a * b; }
-//#define num_mul(a, b) (a * b)
 static inline double    num_one() { return 1; }
 static inline double    num_zero() { return 0; }
 static inline double    num_lt(double a, double b) { return a < b; }

@@ -271,7 +271,7 @@ instance max : Max String := ⟨fun s₁ s₂ ↦ if s₁ < s₂ then s₂ else 
 
 end String
 
-namespace TPCH
+namespace TPCHq5
 
 abbrev orderkey   := (0, ℕ)
 abbrev custkey    := (1, ℕ)
@@ -280,20 +280,22 @@ abbrev nationkey  := (3, ℕ)
 abbrev regionkey  := (4, ℕ)
 abbrev regionname := (5, String)
 
-def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.map (λ _ => 0)
-def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.map (λ _ => 1)
+def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 0)
+def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 1)
 
-def ssMat (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .search 0 & S.level .step (csr.of f 2) ⊚ S.leaf (f ++ "_vals")
+def ss (f : String) (leaf : E ℕ → α) : ℕ →ₛ ℕ →ₛ α := (csr.of f 1).level .search 0 |> S.level .step (csr.of f 2) ⊚ Functor.map leaf
+def ssTbl (f : String) : ℕ →ₛ ℕ →ₛ E R := ss f fun _ => 1
+def ssMat (f : String) (col := "vals") : ℕ →ₛ ℕ →ₛ E R := ss f (E.access (f ++ "_" ++ col))
+def ssMat2 (f : String) (col1 col2 : String) : ℕ →ₛ ℕ →ₛ (E R × E R) := ss f fun i => (E.access (f ++ "_" ++ col1) i, E.access (f ++ "_" ++ col2) i)
+
 def tbl1 (f : String) : ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.always1
-def ssTbl2 (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.level .step (csr.of f 2) ⊚ S.always1
 def dsTbl2 (f : String) : ℕ →ₐ ℕ →ₛ E R := range & S.level .step (csr.of f 2) ⊚ S.always1
 def dsTbl2_str (f : String) : ℕ →ₐ String →ₛ E R := range & S.level .step (csr.of f 2 String) ⊚ S.always1
 
-def ssTbl2_skip (f : String) : ℕ →ₛ ℕ →ₛ E R := (csr.of f 1).level .step 0 |> S.level .search (csr.of f 2) ⊚ S.always1
-
+def lineitem : orderkey ↠ suppkey ↠ (E R × E R) := ssMat2 "tpch_lineitem" "extendedprice" "discount"
+def lineitem_revenue : orderkey ↠ suppkey ↠ E R := lineitem |> Functor.map (Functor.map fun (p, d) => p * (1 - d))
 def orders   : orderkey  ↠ custkey   ↠ E R := dsTbl2 "tpch_orders"
 def customer : custkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_customer"
-def lineitem : orderkey  ↠ suppkey   ↠ E R := ssMat "tpch_lineitem"  -- R = l_extendedprice * (1 - l_discount)
 def supplier : suppkey   ↠ nationkey ↠ E R := dsTbl2 "tpch_supplier"
 def nation   : nationkey ↠ regionkey ↠ E R := dsTbl2 "tpch_nation"
 def region   : regionkey ↠ regionname ↠ E R := dsTbl2_str "tpch_region"
@@ -301,10 +303,10 @@ def region   : regionkey ↠ regionname ↠ E R := dsTbl2_str "tpch_region"
 def asia_const : E String := .strLit "ASIA"
 def asia : regionname ↠ E R := (S.predRangeIncl asia_const asia_const : String →ₛ E R)
 
-def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey, regionname: lineitem * asia * orders * customer * supplier * nation * region
+def q5 := ∑ orderkey, custkey, suppkey, nationkey, regionkey, regionname: lineitem_revenue * asia * orders * customer * supplier * nation * region
 #check q5
 
-end TPCH
+end TPCHq5
 /- end examples -/
 
 #check (mat "f" : i ↠ j ↠ E R)
@@ -336,7 +338,7 @@ def taco_ops : List (String × String × String) :=
 
 def sql_ops : List (String × String) :=
 [
-let fn := "q5"; (fn, compile_fun fn [go outVal TPCH.q5])
+let fn := "q5"; (fn, compile_fun fn [go outVal TPCHq5.q5])
 --  ("count_range", compile_fun "count_range" $ [go outVal count_range]),
 --  ("triangle", compile_fun "triangle" $ [go outVal $ ∑ i, j, k : dsR * dsS * dsT ]),
 --  ("udf", compile_fun "udf" $ [go outVal_max $ ∑ i, j: udf])
