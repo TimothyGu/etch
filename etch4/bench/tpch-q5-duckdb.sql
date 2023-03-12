@@ -1,4 +1,3 @@
-.timer on
 .echo on
 
 ---------------- load data into memory
@@ -52,6 +51,7 @@ SELECT L_ORDERKEY, L_SUPPKEY, L_LINENUMBER, L_EXTENDEDPRICE, L_DISCOUNT FROM sql
 PRAGMA database_size;
 
 .echo off
+.timer on
 
 ---------------- start of bench
 
