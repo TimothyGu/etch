@@ -38,8 +38,7 @@ inductive Expr
 | false
 deriving Repr
 -- todo? inductive LHS | var (v : Var) | index (base : LHS) (indices : List Expr) deriving Repr
-inductive DeclType
-| Int | Float | ConstCharP | Bool
+inductive DeclType | mk : String → DeclType 
 deriving Repr
 inductive Stmt
 | forIn : (n : Nat) → Var → Stmt → Stmt
@@ -59,11 +58,11 @@ deriving Repr
 class TaggedC (α : Type _) where
   tag : DeclType
 
-instance : TaggedC Nat := ⟨.Int⟩
-instance : TaggedC Int := ⟨.Int⟩
-instance : TaggedC Float := ⟨.Float⟩
-instance : TaggedC Bool := ⟨.Bool⟩
-instance : TaggedC String := ⟨.ConstCharP⟩
+instance : TaggedC Nat := ⟨⟨"int"⟩⟩ 
+instance : TaggedC Int := ⟨⟨"int"⟩⟩ 
+instance : TaggedC Float := ⟨⟨"float"⟩⟩
+instance : TaggedC Bool := ⟨⟨"bool"⟩⟩ 
+instance : TaggedC String := ⟨⟨"const char *"⟩⟩ 
 
 instance : OfNat Expr n where
   ofNat := Expr.lit n
@@ -100,10 +99,7 @@ def emit : Expr → Op := String.emit ∘ toString
 end Expr
 
 def DeclType.emit
-| Int => "int".emit
-| Float => "float".emit
-| ConstCharP => "const char *".emit
-| Bool => "bool".emit
+| mk s => s.emit
 
 namespace Stmt
 

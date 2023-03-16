@@ -50,3 +50,5 @@
 #define bool_one() true
 #define bool_zero() false
 #define bool_neg(a) (!a)
+
+#define macro_ternary(c, x, y) ((c) ? x : y)

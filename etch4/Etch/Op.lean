@@ -46,6 +46,8 @@ instance : OfNat RMin (nat_lit 1) := ⟨ default ⟩
 instance : OfNat RMax (nat_lit 0) := ⟨ default ⟩
 instance : OfNat RMax (nat_lit 1) := ⟨ default ⟩
 
+instance : Coe ℕ R := ⟨fun _ => default⟩
+
 --attribute [irreducible] RMin
 --attribute [irreducible] RMax
 

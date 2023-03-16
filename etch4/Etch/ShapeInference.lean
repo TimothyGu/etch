@@ -81,7 +81,7 @@ instance [Guard α] : Guard (n × ι ⟶ α) where guard n b := λ
 variable
 {α β γ : Type _}
 (n : ℕ)
-{ι : Type _} [Tagged ι] [DecidableEq ι]
+{ι : Type _} [Tagged ι] [TaggedC ι] [DecidableEq ι]
 [LT ι] [DecidableRel (LT.lt : ι → ι → _)] [Zero ι]
 [LE ι] [DecidableRel (LE.le : ι → ι → _)]
 [Max ι]
@@ -182,6 +182,14 @@ class ApplyScalarFn (α β γ : Type _) (δ : outParam $ Type _) := (map : (E α
 instance : ApplyScalarFn α β (E α) (E β) := ⟨ (. $ .) ⟩
 instance [ApplyScalarFn α β α' β'] : ApplyScalarFn α β (n × ι ⟶ α') (n × ι ⟶ β') := ⟨ λ f x => ApplyScalarFn.map f <$> x ⟩
 infixr:10 " <$$> "  => ApplyScalarFn.map
+
+instance Str.HAdd {γ φ ψ} {i} [HAdd γ φ ψ] [Guard γ] [Guard φ] : HAdd (i × ι ⟶ γ) (i × ι ⟶ φ) (i × ι ⟶ ψ) where hAdd
+| .fun a, .fun b => Str.fun $ a+b
+| .str a, .fun b => Str.str $ a+b
+| .fun a, .str b => Str.str $ a+b
+| .str a, .str b => Str.str $ a+b
+
+instance Str.Add {γ} {i} [Add γ] [Guard γ] [Guard φ] : Add (i × ι ⟶ γ) := ⟨HAdd.hAdd⟩
 
 /-
 #check Nat.add

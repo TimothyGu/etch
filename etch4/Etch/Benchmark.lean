@@ -281,8 +281,8 @@ abbrev nationkey  := (4, ℕ)
 abbrev regionkey  := (5, ℕ)
 abbrev regionname := (6, String)
 
-def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 0)
-def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.map (fun _ => 1)
+def S.always0 {f} [Functor f] [Zero (E β)] : f (E α) → f (E β) := Functor.mapConst 0
+def S.always1 {f} [Functor f] [One (E β)] : f (E α) → f (E β) := Functor.mapConst 1
 
 def ss (f : String) (leaf : E ℕ → α) : ℕ →ₛ ℕ →ₛ α := (csr.of f 1).level .search 0 |> S.level .step (csr.of f 2) ⊚ Functor.map leaf
 def ssTbl (f : String) : ℕ →ₛ ℕ →ₛ E R := ss f fun _ => 1
