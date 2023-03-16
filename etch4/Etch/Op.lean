@@ -32,6 +32,8 @@ instance : Add RMin := ⟨ λ _ _ => default ⟩
 instance : Add RMax := ⟨ λ _ _ => default ⟩
 instance : LT R := ⟨ λ _ _  => false ⟩
 instance : DecidableRel (LT.lt : R → R → _) :=  λ .mk .mk => .isFalse (by simp [LT.lt] )
+instance : LE R := ⟨ λ _ _  => false ⟩
+instance : DecidableRel (LE.le : R → R → _) :=  λ .mk .mk => .isFalse (by simp [LE.le] )
 
 instance : Mul R := ⟨ λ _ _ => default ⟩
 instance : Mul RMin := ⟨ λ _ _ => default ⟩

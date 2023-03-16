@@ -2,15 +2,12 @@
 
 ---------------- load data into memory
 
-LOAD sqlite;
-
-SET GLOBAL sqlite_all_varchar=true;
-
 CREATE TABLE REGION  ( R_REGIONKEY  INTEGER NOT NULL,
                             R_NAME       CHAR(25) NOT NULL,
                             PRIMARY KEY (R_REGIONKEY));
 CREATE TABLE NATION  ( N_NATIONKEY  INTEGER NOT NULL,
                             N_REGIONKEY  INTEGER NOT NULL REFERENCES REGION (R_REGIONKEY),
+                            N_NAME       CHAR(25) NOT NULL,
                             PRIMARY KEY (N_NATIONKEY));
 CREATE TABLE SUPPLIER ( S_SUPPKEY     INTEGER NOT NULL,
                              S_NATIONKEY   INTEGER NOT NULL REFERENCES NATION (N_NATIONKEY),
@@ -29,23 +26,12 @@ CREATE TABLE LINEITEM ( L_ORDERKEY    INTEGER NOT NULL,
                              L_DISCOUNT    DOUBLE NOT NULL,
                              PRIMARY KEY (L_ORDERKEY, L_LINENUMBER));
 
-INSERT INTO REGION
-SELECT R_REGIONKEY, R_NAME FROM sqlite_scan('TPC-H.db', 'REGION');
-
-INSERT INTO NATION
-SELECT N_NATIONKEY, N_REGIONKEY FROM sqlite_scan('TPC-H.db', 'NATION');
-
-INSERT INTO SUPPLIER
-SELECT S_SUPPKEY, S_NATIONKEY FROM sqlite_scan('TPC-H.db', 'SUPPLIER');
-
-INSERT INTO CUSTOMER
-SELECT C_CUSTKEY, C_NATIONKEY FROM sqlite_scan('TPC-H.db', 'CUSTOMER');
-
-INSERT INTO ORDERS
-SELECT O_ORDERKEY, O_CUSTKEY, O_ORDERDATE FROM sqlite_scan('TPC-H.db', 'ORDERS');
-
-INSERT INTO LINEITEM
-SELECT L_ORDERKEY, L_SUPPKEY, L_LINENUMBER, L_EXTENDEDPRICE, L_DISCOUNT FROM sqlite_scan('TPC-H.db', 'LINEITEM');
+COPY REGION   FROM 'tpch-csv-q5/region.csv'   (HEADER TRUE, DELIMITER '|');
+COPY NATION   FROM 'tpch-csv-q5/nation.csv'   (HEADER TRUE, DELIMITER '|');
+COPY SUPPLIER FROM 'tpch-csv-q5/supplier.csv' (HEADER TRUE, DELIMITER '|');
+COPY CUSTOMER FROM 'tpch-csv-q5/customer.csv' (HEADER TRUE, DELIMITER '|');
+COPY ORDERS   FROM 'tpch-csv-q5/orders.csv'   (HEADER TRUE, DELIMITER '|');
+COPY LINEITEM FROM 'tpch-csv-q5/lineitem.csv' (HEADER TRUE, DELIMITER '|');
 
 
 PRAGMA database_size;
@@ -56,6 +42,7 @@ PRAGMA database_size;
 ---------------- start of bench
 
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -73,9 +60,12 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -93,9 +83,12 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -113,9 +106,12 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -133,9 +129,12 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -153,10 +152,13 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 EXPLAIN ANALYZE
 select
+ n_name,
  sum(l_extendedprice * (1 - l_discount)) as revenue
 from
   customer,
@@ -174,6 +176,8 @@ where
   and n_regionkey = r_regionkey
   and r_name = 'ASIA'
   and o_orderdate >= date '1994-01-01'
-  and o_orderdate < date '1995-01-01';
+  and o_orderdate < date '1995-01-01'
+group by
+ n_name;
 
 PRAGMA database_size;

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <float.h>
 #include <math.h>
+#include <unordered_map>
 
 #include "sqlite3.h"
 
@@ -33,6 +34,14 @@ double threshold = 0.1;
 //  std::cout << "val: " << val << std::endl; \
 //  std::cout << y << " took: " << std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count() << "μ" << std::endl; \
 //  std::cout << y << " took: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << "ms" << std::endl;
+
+template <typename T, typename U>
+std::ostream& operator<<(std::ostream& os, const std::unordered_map<T, U>& m) {
+  for (auto&& p : m) {
+    os << p.first << ": " << p.second << '\n';
+  }
+  return os;
+}
 
 template <typename F>
 void time(F f, char const* tag, int reps) {
@@ -69,6 +78,7 @@ static inline double    num_mul(double a, double b) { return a * b; }
 static inline double    num_one() { return 1; }
 static inline double    num_zero() { return 0; }
 static inline double    num_lt(double a, double b) { return a < b; }
+static inline double    num_le(double a, double b) { return a <= b; }
 //static inline double    num_lt(double a, double b) { printf("%f < %f\n", a, b); return a < b; }
 
 static inline double    num_ofBool(bool x) { return x ? 1 : 0; }
@@ -137,6 +147,8 @@ static inline const char* str_min(const char* a, const char* b) { return str_lt(
 static inline bool   str_eq(const char* a, const char* b) { return strcmp(a, b) == 0; }
 static inline int    str_atoi(const char* a) { return atoi(a); }
 static inline double str_atof(const char* a) { return atof(a); }
+
+static inline double* index_str_map(std::unordered_map<const char*, double>& m, const char* s) { return &m[s]; }
 
 
 #ifdef ETCH_MATH
